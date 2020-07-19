@@ -1,0 +1,5 @@
+power on -> enter
+button -> start 1 second timer, show elapsed time
+    button 1 -> 1m
+    button 2 -> 4m
+    every second, subtracts one, displays current remaining time
