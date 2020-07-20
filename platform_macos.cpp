@@ -1,6 +1,10 @@
 #include <deque>
+#include <chrono>
+#include <cmath>
 
-#include <timer_platform.h>
+#include <platform.h>
+
+// c++ -DHOSTED -Wall -I. -I/opt/local/include/ -L/opt/local/lib -std=c++17 -lglfw -framework OpenGL -framework Cocoa -framework IOkit platform_macos.cpp testapp1.cpp gl_utility.cpp -o testapp1
 
 #define GL_SILENCE_DEPRECATION
 
@@ -156,8 +160,31 @@ static void error_callback(int error, const char* description)
     fprintf(stderr, "GLFW: %s\n", description);
 }
 
+std::chrono::time_point<std::chrono::system_clock> keyPressedTime[2];
+
+constexpr float LONG_PRESS_DURATION = 0.5;
+
 static void key(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
+    if(action == GLFW_PRESS) {
+        if(key == GLFW_KEY_1) {
+            keyPressedTime[0] = std::chrono::system_clock::now();
+        } else if(key == GLFW_KEY_2) {
+            keyPressedTime[1] = std::chrono::system_clock::now();
+        } else {
+        }
+    } else if(action == GLFW_RELEASE) {
+        if(key == GLFW_KEY_1) {
+            std::chrono::duration<float> elapsed = std::chrono::system_clock::now() - keyPressedTime[0];
+            bool pressWasLong = (elapsed.count() >= LONG_PRESS_DURATION);
+            EventQueue.push_back({pressWasLong ? LONG_PRESS : SHORT_PRESS, BUTTON_1});
+        } else if(key == GLFW_KEY_2) {
+            std::chrono::duration<float> elapsed = std::chrono::system_clock::now() - keyPressedTime[1];
+            bool pressWasLong = (elapsed.count() >= LONG_PRESS_DURATION);
+            EventQueue.push_back({pressWasLong ? LONG_PRESS : SHORT_PRESS, BUTTON_2});
+        } else {
+        }
+    }
 #if 0
     static bool super_down = false;
     static bool control_down = false;
@@ -355,13 +382,75 @@ void initialize_ui(const char *appName)
     CheckOpenGL(__FILE__, __LINE__);
 }
 
+struct Timer {
+    bool running;
+    std::chrono::time_point<std::chrono::system_clock> expires;
+    std::chrono::time_point<std::chrono::system_clock> nextTick;
+    Timer() :
+        running(false)
+    { }
+};
+
+constexpr int MAX_TIMERS = 16;
+Timer timers[MAX_TIMERS];
+
+int StartTimer(int seconds)
+{
+    int timer = 0;
+    while((timer < MAX_TIMERS) && (timers[timer].running)) {
+        timer++;
+    }
+    if(timer >= MAX_TIMERS) {
+        return OUT_OF_TIMERS;
+    }
+    Timer& t = timers[timer];
+    t.running = true;
+    t.expires = std::chrono::system_clock::now() + std::chrono::duration<int>(seconds);
+    t.nextTick = std::chrono::system_clock::now() + std::chrono::duration<int>(1);
+    // std::chrono::duration<int> expires = seconds;
+    // std::chrono::duration<int> expires = seconds;
+    return timer;
+}
+
+int CancelTimer(int timer)
+{
+    timers[timer].running = false;
+    return NO_ERROR;
+}
+
+int GetTimerRemaining(int timer)
+{
+    std::chrono::duration<float> expires = timers[timer].expires - std::chrono::system_clock::now();
+    return floorf(expires.count());
+}
+
+int SetScreen(bool powerOn)
+{
+    printf("PLATFORM: turn screen %s\n", powerOn ? "on" : "off");
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
-    initialize_ui("timer_platform");
+    initialize_ui("coffee timer simulator");
 
-    EventQueue.push_back({SHORT_PRESS, 0});
-
+    EventQueue.push_back({INIT, 0});
     do {
+
+        auto now = std::chrono::system_clock::now();
+        for(int i = 0; i < MAX_TIMERS; i++) {
+            Timer& t = timers[i];
+            if(t.running) {
+                if(now > t.nextTick) {
+                    t.nextTick = t.nextTick + std::chrono::duration<int>(1);
+                    EventQueue.push_back({TIMER_TICK, i});
+                }
+                if(now > t.expires) {
+                    EventQueue.push_back({TIMER_FINISHED, i});
+                    t.running = false;
+                }
+            }
+        }
         iterate_ui();
 
         bool eventsHandled = false;
