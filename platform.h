@@ -6,7 +6,7 @@ enum EventType {
     LONG_PRESS,
     TIMER_TICK,
     TIMER_FINISHED,
-    PLAY_FINISHED,
+    CLIP_FINISHED,
 };
 
 enum {
@@ -39,6 +39,8 @@ struct Color
 enum {
     NO_ERROR = 0,
     OUT_OF_TIMERS = -1,
+    INVALID_TIMER_NUMBER = -2,
+    INVALID_CLIP_NUMBER = -2,
 };
 
 // Provided by the platform:
@@ -51,6 +53,8 @@ extern "C" {
     int DrawRect(int x, int y, int w, int h, Color c);
     int DrawBitmap(int x, int y, int w, int h, uint8_t *bits, Color fg, Color bg);
     int SetScreen(bool power);
+    int PlayClip(uint8_t *samples8KMono, size_t size);
+    int CancelClip(int clip);
 
 };
 
