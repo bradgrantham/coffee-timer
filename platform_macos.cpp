@@ -387,7 +387,7 @@ void initialize_ui(const char *appName)
 
 struct Timer {
     bool running;
-    FloatTimepoint expires;
+    int remaining;
     FloatTimepoint nextTick;
     Timer() :
         running(false)
@@ -428,8 +428,8 @@ int StartTimer(int seconds)
     }
     Timer& t = timers[timer];
     t.running = true;
-    t.expires = std::chrono::steady_clock::now() + FloatDuration(seconds);
     t.nextTick = std::chrono::steady_clock::now() + FloatDuration(1);
+    t.remaining = seconds - 1;
     return timer;
 }
 
@@ -447,8 +447,7 @@ int GetTimerRemaining(int timer)
     if(timer < 0) {
         return INVALID_TIMER_NUMBER;
     }
-    FloatDuration expires = timers[timer].expires - std::chrono::steady_clock::now();
-    return floorf(expires.count());
+    return timers[timer].remaining;
 }
 
 int SetScreen(bool powerOn)
@@ -470,12 +469,14 @@ int main(int argc, char **argv)
             Timer& t = timers[i];
             if(t.running) {
                 if(now > t.nextTick) {
-                    t.nextTick = t.nextTick + FloatDuration(1);
-                    EventQueue.push_back({TIMER_TICK, i});
-                }
-                if(now > t.expires) {
-                    EventQueue.push_back({TIMER_FINISHED, i});
-                    t.running = false;
+                    t.remaining --;
+                    if(t.remaining > 0) {
+                        EventQueue.push_back({TIMER_TICK, i});
+                        t.nextTick = t.nextTick + FloatDuration(1);
+                    } else {
+                        EventQueue.push_back({TIMER_FINISHED, i});
+                        t.running = false;
+                    }
                 }
             }
         }
