@@ -17,6 +17,9 @@
 
 #include "gl_utility.h"
 
+typedef std::chrono::duration<float> FloatDuration;
+typedef std::chrono::time_point<std::chrono::steady_clock, FloatDuration> FloatTimepoint;
+
 std::deque<Event> EventQueue;
 
 constexpr int ScreenWidth = 128;
@@ -160,7 +163,7 @@ static void error_callback(int error, const char* description)
     fprintf(stderr, "GLFW: %s\n", description);
 }
 
-std::chrono::time_point<std::chrono::system_clock> keyPressedTime[2];
+FloatTimepoint keyPressedTime[2];
 
 constexpr float LONG_PRESS_DURATION = 0.5;
 
@@ -168,18 +171,18 @@ static void key(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
     if(action == GLFW_PRESS) {
         if(key == GLFW_KEY_1) {
-            keyPressedTime[0] = std::chrono::system_clock::now();
+            keyPressedTime[0] = std::chrono::steady_clock::now();
         } else if(key == GLFW_KEY_2) {
-            keyPressedTime[1] = std::chrono::system_clock::now();
+            keyPressedTime[1] = std::chrono::steady_clock::now();
         } else {
         }
     } else if(action == GLFW_RELEASE) {
         if(key == GLFW_KEY_1) {
-            std::chrono::duration<float> elapsed = std::chrono::system_clock::now() - keyPressedTime[0];
+            FloatDuration elapsed = std::chrono::steady_clock::now() - keyPressedTime[0];
             bool pressWasLong = (elapsed.count() >= LONG_PRESS_DURATION);
             EventQueue.push_back({pressWasLong ? LONG_PRESS : SHORT_PRESS, BUTTON_1});
         } else if(key == GLFW_KEY_2) {
-            std::chrono::duration<float> elapsed = std::chrono::system_clock::now() - keyPressedTime[1];
+            FloatDuration elapsed = std::chrono::steady_clock::now() - keyPressedTime[1];
             bool pressWasLong = (elapsed.count() >= LONG_PRESS_DURATION);
             EventQueue.push_back({pressWasLong ? LONG_PRESS : SHORT_PRESS, BUTTON_2});
         } else {
@@ -384,8 +387,8 @@ void initialize_ui(const char *appName)
 
 struct Timer {
     bool running;
-    std::chrono::time_point<std::chrono::system_clock> expires;
-    std::chrono::time_point<std::chrono::system_clock> nextTick;
+    FloatTimepoint expires;
+    FloatTimepoint nextTick;
     Timer() :
         running(false)
     { }
@@ -393,6 +396,26 @@ struct Timer {
 
 constexpr int MAX_TIMERS = 16;
 Timer timers[MAX_TIMERS];
+
+bool clipPlaying = false;
+FloatTimepoint clipFinishes;
+
+int PlayClip(uint8_t *samples, size_t size)
+{
+    printf("play clip, %zd\n", size);
+    clipPlaying = true;
+    clipFinishes = std::chrono::steady_clock::now() + FloatDuration(size / 8000.0f);
+    return 0;
+}
+
+int CancelClip(int tune)
+{
+    if(tune < 0) {
+        return INVALID_CLIP_NUMBER;
+    }
+    assert(tune == 0);
+    return 0;
+}
 
 int StartTimer(int seconds)
 {
@@ -405,22 +428,26 @@ int StartTimer(int seconds)
     }
     Timer& t = timers[timer];
     t.running = true;
-    t.expires = std::chrono::system_clock::now() + std::chrono::duration<int>(seconds);
-    t.nextTick = std::chrono::system_clock::now() + std::chrono::duration<int>(1);
-    // std::chrono::duration<int> expires = seconds;
-    // std::chrono::duration<int> expires = seconds;
+    t.expires = std::chrono::steady_clock::now() + FloatDuration(seconds);
+    t.nextTick = std::chrono::steady_clock::now() + FloatDuration(1);
     return timer;
 }
 
 int CancelTimer(int timer)
 {
+    if(timer < 0) {
+        return INVALID_TIMER_NUMBER;
+    }
     timers[timer].running = false;
     return NO_ERROR;
 }
 
 int GetTimerRemaining(int timer)
 {
-    std::chrono::duration<float> expires = timers[timer].expires - std::chrono::system_clock::now();
+    if(timer < 0) {
+        return INVALID_TIMER_NUMBER;
+    }
+    FloatDuration expires = timers[timer].expires - std::chrono::steady_clock::now();
     return floorf(expires.count());
 }
 
@@ -437,12 +464,13 @@ int main(int argc, char **argv)
     EventQueue.push_back({INIT, 0});
     do {
 
-        auto now = std::chrono::system_clock::now();
+        FloatTimepoint now = std::chrono::steady_clock::now();
+
         for(int i = 0; i < MAX_TIMERS; i++) {
             Timer& t = timers[i];
             if(t.running) {
                 if(now > t.nextTick) {
-                    t.nextTick = t.nextTick + std::chrono::duration<int>(1);
+                    t.nextTick = t.nextTick + FloatDuration(1);
                     EventQueue.push_back({TIMER_TICK, i});
                 }
                 if(now > t.expires) {
@@ -451,6 +479,15 @@ int main(int argc, char **argv)
                 }
             }
         }
+
+        if(clipPlaying) {
+            if(now > clipFinishes) {
+                printf("clip finished\n");
+                EventQueue.push_back({CLIP_FINISHED, 0});
+                clipPlaying = false;
+            }
+        }
+
         iterate_ui();
 
         bool eventsHandled = false;
