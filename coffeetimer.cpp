@@ -35,7 +35,17 @@ constexpr int finishedToWaitingDuration = 10; // 5 * 60;
 
 void DisplayTimeRemaining(int seconds)
 {
-    printf("%02d:%02d\n", seconds / 60, seconds % 60);
+    printf("on time display: %02d:%02d\n", seconds / 60, seconds % 60);
+}
+
+void DisplayOnButton(int button, const char *str)
+{
+    printf("on button %d: %s\n", button, str);
+}
+
+void DisplayString(const char *str)
+{
+    printf("on time display: %s\n", str);
 }
 
 void EnterRunningState(int which)
@@ -55,7 +65,9 @@ void EnterWaitingState()
 {
     if(debugStates) printf("EnterWaitingState\n");
     SetScreen(true);
-    printf("draw 1m and 4m and smiley\n");
+    DisplayOnButton(1, "1m");
+    DisplayOnButton(2, "4m");
+    DisplayString("Press Button To Left\n");
     waitingTimer = StartTimer(waitingToDarkDuration);
     appState = STATE_WAITING;
 }
@@ -65,6 +77,7 @@ uint8_t samples[8000]; // XXX fill
 void EnterFinishedState()
 {
     if(debugStates) printf("EnterFinishedState\n");
+    DisplayTimeRemaining(0);
     appState = STATE_FINISHED;
     finishedStateStep = FINISHED_BEEP;
     beepClip = PlayClip(0, sizeof(samples));
@@ -78,12 +91,13 @@ void UpdateFinishedScreen()
         beepClip = -1;
         beepSilenceTimer = StartTimer(1);
         finishedStateStep = FINISHED_QUIET;
-        printf("...\n");
+        DisplayString("--:--");
     } else if(finishedStateStep == FINISHED_QUIET) {
         beepSilenceTimer = -1;
         beepClip = PlayClip(samples, sizeof(samples));
         finishedStateStep = FINISHED_BEEP;
-        printf("beep beep beep\n");
+        DisplayTimeRemaining(0);
+        printf("beep beep beep\n"); // XXX
     }
 }
 
