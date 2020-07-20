@@ -1,9 +1,13 @@
 #include <cstdio>
-#include "timer_platform.h"
+#include "platform.h"
 
 int HandleEvent(const Event& e)
 {
     switch(e.type) {
+        case INIT: {
+            printf("INIT %d\n", e.data);
+            break;
+        }
         case SHORT_PRESS: {
             printf("SHORT_PRESS %d\n", e.data);
             break;
@@ -12,16 +16,16 @@ int HandleEvent(const Event& e)
             printf("LONG_PRESS %d\n", e.data);
             break;
         }
-        case TIMER_FINISH: {
-            printf("TIMER_FINISH %d\n", e.data);
+        case TIMER_FINISHED: {
+            printf("TIMER_FINISHED %d\n", e.data);
             break;
         }
         case TIMER_TICK: {
             printf("TIMER_TICK %d\n", e.data);
             break;
         }
-        case PLAY_FINISH: {
-            printf("PLAY_FINISH %d\n", e.data);
+        case PLAY_FINISHED: {
+            printf("PLAY_FINISHED %d\n", e.data);
             break;
         }
     }
