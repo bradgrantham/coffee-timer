@@ -34,8 +34,8 @@ int HandleEvent(const Event& e)
             }
             break;
         }
-        case PLAY_FINISHED: {
-            printf("PLAY_FINISHED %d\n", e.data);
+        case CLIP_FINISHED: {
+            printf("CLIP_FINISHED %d\n", e.data);
             break;
         }
     }
