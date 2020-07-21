@@ -1,6 +1,7 @@
 #include <deque>
 #include <chrono>
 #include <cmath>
+#include <ao/ao.h>
 
 #include <platform.h>
 
@@ -25,7 +26,8 @@ std::deque<Event> EventQueue;
 constexpr int ScreenWidth = 128;
 constexpr int ScreenHeight = 128;
 constexpr int ScreenScale = 4;
-unsigned char ScreenImage[ScreenWidth * ScreenWidth * 3];
+unsigned char ScreenImage[ScreenWidth * ScreenHeight * 3];
+bool ScreenEnabled = false;
 
 static GLFWwindow* my_window;
 
@@ -148,12 +150,14 @@ static void redraw(GLFWwindow *window)
     glViewport(0, 0, fbw, fbh);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, screen_image_texture);
-    set_image_shader(to_screen_transform, screen_image_texture, 0, 0);
+    if(ScreenEnabled) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, screen_image_texture);
+        set_image_shader(to_screen_transform, screen_image_texture, 0, 0);
 
-    screen_image_rectangle.bind();
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        screen_image_rectangle.bind();
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    }
 
     CheckOpenGL(__FILE__, __LINE__);
 }
@@ -346,12 +350,45 @@ void shutdown_ui()
     glfwTerminate();
 }
 
+ao_device* audioDevice;
+
+ao_device *open_ao()
+{
+    ao_device *device;
+    ao_sample_format format;
+    int default_driver;
+
+    ao_initialize();
+
+    default_driver = ao_default_driver_id();
+
+    memset(&format, 0, sizeof(format));
+    format.bits = 8;
+    format.channels = 1;
+    format.rate = 8000; // 44100;
+    format.byte_format = AO_FMT_LITTLE;
+
+    /* -- Open driver -- */
+    device = ao_open_live(default_driver, &format, NULL /* no options */);
+    if (device == NULL) {
+        fprintf(stderr, "Error opening libao audio device.\n");
+        return nullptr;
+    }
+    return device;
+}
+
+
 void initialize_ui(const char *appName)
 {
+    audioDevice = open_ao();
+    if(!audioDevice) {
+        exit(EXIT_FAILURE);
+    }
     glfwSetErrorCallback(error_callback);
 
-    if(!glfwInit())
+    if(!glfwInit()) {
         exit(EXIT_FAILURE);
+    }
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
@@ -402,10 +439,11 @@ FloatTimepoint clipFinishes;
 
 int PlayClip(uint8_t *samples, size_t size)
 {
-    printf("play clip, %zd\n", size);
+    ao_play(audioDevice, (char*)samples, size);
     clipPlaying = true;
     clipFinishes = std::chrono::steady_clock::now() + FloatDuration(size / 8000.0f);
-    return 0;
+
+    return NO_ERROR;
 }
 
 int CancelClip(int tune)
@@ -414,7 +452,7 @@ int CancelClip(int tune)
         return INVALID_CLIP_NUMBER;
     }
     assert(tune == 0);
-    return 0;
+    return NO_ERROR;
 }
 
 int StartTimer(int seconds)
@@ -452,8 +490,41 @@ int GetTimerRemaining(int timer)
 
 int SetScreen(bool powerOn)
 {
-    printf("PLATFORM: turn screen %s\n", powerOn ? "on" : "off");
-    return 0;
+    ScreenEnabled = powerOn;
+    return NO_ERROR;
+}
+
+int DrawRect(int x, int y, int w, int h, const Color& c)
+{
+    for(int row = y; row < y + h; row++) {
+        for(int col = x; col < x + w; col++) {
+            ScreenImage[(col + row * ScreenWidth) * 3 + 0] = c.r;
+            ScreenImage[(col + row * ScreenWidth) * 3 + 1] = c.g;
+            ScreenImage[(col + row * ScreenWidth) * 3 + 2] = c.b;
+        }
+    }
+    return NO_ERROR;
+}
+
+int DrawBitmap(int left, int top, int w, int h, uint8_t *bits, size_t rowBytes, const Color& fg, const Color& bg)
+{
+    for(int row = 0; row < h; row++) {
+        for(int col = 0; col < w; col++) {
+            int whichByte = col / 8 + row * rowBytes;
+            int whichBit = col % 8;
+            uint8_t *pixel = ScreenImage + ((col + left) + (row + top) * ScreenWidth) * 3;
+            if(bits[whichByte] & (1 << whichBit)) {
+                pixel[0] = fg.r;
+                pixel[1] = fg.g;
+                pixel[2] = fg.b;
+            } else {
+                pixel[0] = bg.r;
+                pixel[1] = bg.g;
+                pixel[2] = bg.b;
+            }
+        }
+    }
+    return NO_ERROR;
 }
 
 int main(int argc, char **argv)
@@ -483,7 +554,6 @@ int main(int argc, char **argv)
 
         if(clipPlaying) {
             if(now > clipFinishes) {
-                printf("clip finished\n");
                 EventQueue.push_back({CLIP_FINISHED, 0});
                 clipPlaying = false;
             }

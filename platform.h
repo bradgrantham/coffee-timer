@@ -1,4 +1,8 @@
+#ifndef _PLATFORM_H_
+#define _PLATFORM_H_
+
 #include <stdint.h>
+#include <cstdlib>
 
 enum EventType {
     INIT,
@@ -50,8 +54,8 @@ extern "C" {
     int StartTimer(int seconds);
     int CancelTimer(int timer);
     int GetTimerRemaining(int timer);
-    int DrawRect(int x, int y, int w, int h, Color c);
-    int DrawBitmap(int x, int y, int w, int h, uint8_t *bits, Color fg, Color bg);
+    int DrawRect(int x, int y, int w, int h, const Color& c);
+    int DrawBitmap(int x, int y, int w, int h, uint8_t *bits, size_t rowBytes, const Color& fg, const Color& bg);
     int SetScreen(bool power);
     int PlayClip(uint8_t *samples8KMono, size_t size);
     int CancelClip(int clip);
@@ -65,3 +69,5 @@ extern "C" {
     int HandleEvent(const Event& e);
 
 };
+
+#endif /* _PLATFORM_H_ */
