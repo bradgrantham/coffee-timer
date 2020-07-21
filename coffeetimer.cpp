@@ -27,7 +27,7 @@ enum {
 int waitingTimer;
 int runningTimer;
 int finishedTimer;
-int beepSilenceTimer;
+int finishedStepTimer;
 int beepClip;
 #if 0
 constexpr int waitingToDarkDuration = 10;
@@ -394,29 +394,26 @@ const unsigned char timerBeep_bytes[] = {
 };
 unsigned int timerBeep_length = 4608;
 
-void EnterFinishedState()
-{
-    if(debugStates) printf("EnterFinishedState\n");
-    DisplayTimeRemaining(0);
-    appState = STATE_FINISHED;
-    finishedStateStep = FINISHED_BEEP;
-    beepClip = PlayClip(timerBeep_bytes, sizeof(timerBeep_bytes));
-    finishedTimer = StartTimer(finishedToWaitingDuration);
-}
-
 void UpdateFinishedScreen()
 {
     if(finishedStateStep == FINISHED_BEEP) {
-        beepClip = -1;
-        beepSilenceTimer = StartTimer(1);
         finishedStateStep = FINISHED_QUIET;
         DisplayString("--:--");
     } else if(finishedStateStep == FINISHED_QUIET) {
-        beepSilenceTimer = -1;
         beepClip = PlayClip(timerBeep_bytes, sizeof(timerBeep_bytes));
         finishedStateStep = FINISHED_BEEP;
         DisplayTimeRemaining(0);
     }
+    finishedStepTimer = StartTimer(1);
+}
+
+void EnterFinishedState()
+{
+    if(debugStates) printf("EnterFinishedState\n");
+    appState = STATE_FINISHED;
+    finishedStateStep = FINISHED_QUIET;
+    finishedTimer = StartTimer(finishedToWaitingDuration);
+    UpdateFinishedScreen();
 }
 
 void UpdateWaitingScreen()
@@ -466,6 +463,7 @@ int HandleEvent(const Event& e)
                 case STATE_FINISHED:
                     CancelClip(beepClip);
                     CancelTimer(finishedTimer);
+                    CancelTimer(finishedStepTimer);
                     EnterWaitingState();
                     break;
             }
@@ -512,13 +510,12 @@ int HandleEvent(const Event& e)
                     break;
                 case STATE_FINISHED:
                     if(e.data == finishedTimer) {
-                        CancelTimer(beepSilenceTimer);
-                        beepSilenceTimer = -1;
+                        CancelTimer(finishedStepTimer);
+                        finishedStepTimer = -1;
                         CancelClip(beepClip);
                         beepClip = -1;
                         EnterWaitingState();
-                    } else if(e.data == beepSilenceTimer) {
-                        beepSilenceTimer = -1;
+                    } else if(e.data == finishedStepTimer) {
                         UpdateFinishedScreen();
                     } else {
                         abort();
@@ -569,7 +566,7 @@ int HandleEvent(const Event& e)
                     break;
                 case STATE_FINISHED:
                     assert(finishedStateStep == FINISHED_BEEP);
-                    UpdateFinishedScreen();
+                    beepClip = -1;
                     break;
             }
             break;
