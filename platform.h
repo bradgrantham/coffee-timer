@@ -57,7 +57,7 @@ extern "C" {
     int DrawRect(int x, int y, int w, int h, const Color& c);
     int DrawBitmap(int x, int y, int w, int h, uint8_t *bits, size_t rowBytes, const Color& fg, const Color& bg);
     int SetScreen(bool power);
-    int PlayClip(uint8_t *samples8KMono, size_t size);
+    int PlayClip(const uint8_t *samples8KMono, size_t size);
     int CancelClip(int clip);
 
 };

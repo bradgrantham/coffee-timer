@@ -437,7 +437,7 @@ Timer timers[MAX_TIMERS];
 bool clipPlaying = false;
 FloatTimepoint clipFinishes;
 
-int PlayClip(uint8_t *samples, size_t size)
+int PlayClip(const uint8_t *samples, size_t size)
 {
     ao_play(audioDevice, (char*)samples, size);
     clipPlaying = true;
