@@ -1,5 +1,3 @@
-power on -> enter
-button -> start 1 second timer, show elapsed time
-    button 1 -> 1m
-    button 2 -> 4m
-    every second, subtracts one, displays current remaining time
+If the handle event callback is exited and no timers and no clips
+  are running, enter low-power mode (kill screen?)
+interrupt on button push -> wake from sleep so main() can run

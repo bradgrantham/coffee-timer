@@ -2,6 +2,7 @@
 #include <chrono>
 #include <cmath>
 #include <ao/ao.h>
+#include <thread>
 
 #include <platform.h>
 
@@ -18,14 +19,13 @@
 
 #include "gl_utility.h"
 
-typedef std::chrono::duration<float> FloatDuration;
-typedef std::chrono::time_point<std::chrono::steady_clock, FloatDuration> FloatTimepoint;
+typedef std::chrono::steady_clock::time_point Timepoint;
 
 std::deque<Event> EventQueue;
 
 constexpr int ScreenWidth = 128;
 constexpr int ScreenHeight = 128;
-constexpr int ScreenScale = 4;
+constexpr int ScreenScale = 2;
 unsigned char ScreenImage[ScreenWidth * ScreenHeight * 3];
 bool ScreenEnabled = false;
 
@@ -167,9 +167,9 @@ static void error_callback(int error, const char* description)
     fprintf(stderr, "GLFW: %s\n", description);
 }
 
-FloatTimepoint keyPressedTime[2];
+Timepoint keyPressedTime[2];
 
-constexpr float LONG_PRESS_DURATION = 0.5;
+constexpr float LONG_PRESS_DURATION_MICROS = 500000;
 
 static void key(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
@@ -182,12 +182,12 @@ static void key(GLFWwindow *window, int key, int scancode, int action, int mods)
         }
     } else if(action == GLFW_RELEASE) {
         if(key == GLFW_KEY_1) {
-            FloatDuration elapsed = std::chrono::steady_clock::now() - keyPressedTime[0];
-            bool pressWasLong = (elapsed.count() >= LONG_PRESS_DURATION);
+            auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - keyPressedTime[0]);
+            bool pressWasLong = (elapsed.count() >= LONG_PRESS_DURATION_MICROS);
             EventQueue.push_back({pressWasLong ? LONG_PRESS : SHORT_PRESS, BUTTON_1});
         } else if(key == GLFW_KEY_2) {
-            FloatDuration elapsed = std::chrono::steady_clock::now() - keyPressedTime[1];
-            bool pressWasLong = (elapsed.count() >= LONG_PRESS_DURATION);
+            auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - keyPressedTime[1]);
+            bool pressWasLong = (elapsed.count() >= LONG_PRESS_DURATION_MICROS);
             EventQueue.push_back({pressWasLong ? LONG_PRESS : SHORT_PRESS, BUTTON_2});
         } else {
         }
@@ -368,8 +368,10 @@ ao_device *open_ao()
     format.rate = 8000; // 44100;
     format.byte_format = AO_FMT_LITTLE;
 
+    ao_option opt = {(char*)"buffer_time", (char*)"500", nullptr};
+
     /* -- Open driver -- */
-    device = ao_open_live(default_driver, &format, NULL /* no options */);
+    device = ao_open_live(default_driver, &format, &opt);
     if (device == NULL) {
         fprintf(stderr, "Error opening libao audio device.\n");
         return nullptr;
@@ -425,7 +427,7 @@ void initialize_ui(const char *appName)
 struct Timer {
     bool running;
     int remaining;
-    FloatTimepoint nextTick;
+    Timepoint nextTick;
     Timer() :
         running(false)
     { }
@@ -435,13 +437,17 @@ constexpr int MAX_TIMERS = 16;
 Timer timers[MAX_TIMERS];
 
 bool clipPlaying = false;
-FloatTimepoint clipFinishes;
+Timepoint clipFinishes;
 
 int PlayClip(const uint8_t *samples, size_t size)
 {
-    ao_play(audioDevice, (char*)samples, size);
+    // auto playThread = std::thread{[&] {
+        ao_play(audioDevice, (char*)samples, size);
+    // }};
+    // playThread.detach();
+
     clipPlaying = true;
-    clipFinishes = std::chrono::steady_clock::now() + FloatDuration(size / 8000.0f);
+    clipFinishes = std::chrono::steady_clock::now() + std::chrono::microseconds(size * 1000000 / 8000);
 
     return NO_ERROR;
 }
@@ -455,19 +461,23 @@ int CancelClip(int tune)
     return NO_ERROR;
 }
 
-int StartTimer(int seconds)
+int StartTimer(int tenths)
 {
     int timer = 0;
+
     while((timer < MAX_TIMERS) && (timers[timer].running)) {
         timer++;
     }
+
     if(timer >= MAX_TIMERS) {
         return OUT_OF_TIMERS;
     }
+
     Timer& t = timers[timer];
     t.running = true;
-    t.nextTick = std::chrono::steady_clock::now() + FloatDuration(1);
-    t.remaining = seconds - 1;
+    t.nextTick = std::chrono::steady_clock::now() + std::chrono::microseconds(100000);
+    t.remaining = tenths - 1;
+
     return timer;
 }
 
@@ -477,6 +487,16 @@ int CancelTimer(int timer)
         return INVALID_TIMER_NUMBER;
     }
     timers[timer].running = false;
+    for (auto it = EventQueue.begin(); it != EventQueue.end(); ) {
+        const Event& e = *it;
+        bool isTimerEvent = (e.type == TIMER_TICK) || (e.type == TIMER_FINISHED);
+        bool isThisTimer = (e.data == timer);
+        if (isTimerEvent && isThisTimer) {
+            it = EventQueue.erase(it);
+        } else {
+            ++it;
+        }
+    }
     return NO_ERROR;
 }
 
@@ -534,7 +554,9 @@ int main(int argc, char **argv)
     EventQueue.push_back({INIT, 0});
     do {
 
-        FloatTimepoint now = std::chrono::steady_clock::now();
+        iterate_ui();
+
+        Timepoint now = std::chrono::steady_clock::now();
 
         for(int i = 0; i < MAX_TIMERS; i++) {
             Timer& t = timers[i];
@@ -543,7 +565,7 @@ int main(int argc, char **argv)
                     t.remaining --;
                     if(t.remaining > 0) {
                         EventQueue.push_back({TIMER_TICK, i});
-                        t.nextTick = t.nextTick + FloatDuration(1);
+                        t.nextTick = t.nextTick + std::chrono::microseconds(100000);
                     } else {
                         EventQueue.push_back({TIMER_FINISHED, i});
                         t.running = false;
@@ -558,8 +580,6 @@ int main(int argc, char **argv)
                 clipPlaying = false;
             }
         }
-
-        iterate_ui();
 
         bool eventsHandled = false;
         while(EventQueue.size() > 0) {

@@ -11,7 +11,7 @@ int HandleEvent(const Event& e)
 
     switch(e.type) {
         case INIT: {
-            myTimer = StartTimer(3600);
+            myTimer = StartTimer(3600 * 10);
             value = 120;
             InitFont();
             break;
@@ -23,7 +23,7 @@ int HandleEvent(const Event& e)
             } else if(e.data == BUTTON_2) {
                 value = std::min(255, value + 15);
             }
-            switch(GetTimerRemaining(myTimer) % 3) {
+            switch((GetTimerRemaining(myTimer) / 10) % 3) {
                 case 0:
                     DrawRect(0, 0, 127, 127, Color(value, 0, 0));
                     DrawText(32, 32, "hey there", JUSTIFY_LEFT, Color(255, 255, 255), Color(value, 0, 0));
@@ -49,7 +49,7 @@ int HandleEvent(const Event& e)
         }
         case TIMER_TICK: {
             printf("TIMER_TICK %d\n", e.data);
-            switch(GetTimerRemaining(myTimer) % 3) {
+            switch((GetTimerRemaining(myTimer) / 10) % 3) {
                 case 0:
                     DrawRect(0, 0, 127, 127, Color(value, 0, 0));
                     DrawText(32, 32, "hey there", JUSTIFY_LEFT, Color(255, 255, 255), Color(value, 0, 0));

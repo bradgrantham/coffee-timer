@@ -51,7 +51,7 @@ enum {
 
 extern "C" {
 
-    int StartTimer(int seconds);
+    int StartTimer(int tenths); // Tenths of seconds
     int CancelTimer(int timer);
     int GetTimerRemaining(int timer);
     int DrawRect(int x, int y, int w, int h, const Color& c);

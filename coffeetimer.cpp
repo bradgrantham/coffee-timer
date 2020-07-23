@@ -7,38 +7,36 @@
 
 bool debugEvents = false;
 bool debugStates = false;
+bool debugTimers = false;
 
 enum {
     STATE_DARK,
     STATE_WAITING,
     STATE_RUNNING,
     STATE_PAUSED,
-    STATE_FINISHED,
+    STATE_ALARM,
 } appState = STATE_DARK;
 
-// Play beepbeepbeep
-// Wait 1 seconds
-// repeat until timer expires
 enum {
-    FINISHED_BEEP,
-    FINISHED_QUIET,
-} finishedStateStep;
+    ALARM_BEEP,
+    ALARM_QUIET,
+} alarmStateStep;
 
 int waitingTimer;
 int runningTimer;
-int finishedTimer;
-int finishedStepTimer;
+int alarmTimer;
+int alarmStepTimer;
 int beepClip;
 #if 0
-constexpr int waitingToDarkDuration = 10;
-constexpr int button1TimerDuration = 5;
-constexpr int button2TimerDuration = 10;
-constexpr int finishedToWaitingDuration = 10;
+constexpr int waitingToDarkDuration = 100;
+constexpr int button1TimerDuration = 50;
+constexpr int button2TimerDuration = 100;
+constexpr int alarmToWaitingDuration = 100;
 #else
-constexpr int waitingToDarkDuration = 5 * 60;
-constexpr int button1TimerDuration = 1 * 60;
-constexpr int button2TimerDuration = 4 * 60;
-constexpr int finishedToWaitingDuration = 5 * 60;
+constexpr int waitingToDarkDuration = 5 * 60 * 10;
+constexpr int button1TimerDuration = 1 * 60 * 10;
+constexpr int button2TimerDuration = 4 * 60 * 10;
+constexpr int alarmToWaitingDuration = 5 * 60 * 10;
 #endif
 
 struct Rect2Di {
@@ -47,16 +45,18 @@ struct Rect2Di {
     int width;
     int height;
 };
-constexpr Rect2Di timeDisplayArea{16, 40, 128 - 16, 128 - 40 - 32};
-constexpr Rect2Di button1DisplayArea{8, 8, 128 - 8, 16};
-constexpr Rect2Di button2DisplayArea{8, 128 - 16 - 8, 128 - 8, 16};
+constexpr int fontWidth = 8;
+constexpr int fontHeight = 16;
+constexpr Rect2Di timeDisplayArea{fontWidth * 2, 2 * fontHeight, 128 - fontWidth * 4, 128 - 2 * fontHeight - 2 * fontHeight};
+constexpr Rect2Di button1DisplayArea{fontWidth, 8, 128 - fontWidth * 2, fontHeight};
+constexpr Rect2Di button2DisplayArea{fontWidth, 128 - fontHeight - 8, 128 - fontWidth * 2, fontHeight};
 
 void DisplayTimeRemaining(int seconds)
 {
     char timestring[6];
     sprintf(timestring, "%02d:%02d", seconds / 60, seconds % 60);
     DrawRect(timeDisplayArea.left, timeDisplayArea.top, timeDisplayArea.width, timeDisplayArea.height, Color(0, 0, 0));
-    DrawText(timeDisplayArea.left, timeDisplayArea.top, timestring, JUSTIFY_LEFT, Color(255, 255, 255), Color(0, 0, 0));
+    DrawText(timeDisplayArea.left + timeDisplayArea.width / 2, timeDisplayArea.top, timestring, JUSTIFY_CENTER, Color(255, 255, 255), Color(0, 0, 0));
 }
 
 void DisplayOnButton(int button, const char *str)
@@ -73,20 +73,21 @@ void DisplayOnButton(int button, const char *str)
 void DisplayString(const char *str)
 {
     DrawRect(timeDisplayArea.left, timeDisplayArea.top, timeDisplayArea.width, timeDisplayArea.height, Color(0, 0, 0));
-    DrawText(timeDisplayArea.left, timeDisplayArea.top, str, JUSTIFY_LEFT, Color(255, 255, 255), Color(0, 0, 0));
+    DrawText(timeDisplayArea.left + timeDisplayArea.width / 2, timeDisplayArea.top, str, JUSTIFY_CENTER, Color(255, 255, 255), Color(0, 0, 0));
+}
+
+void UpdateRunningState()
+{
+    DisplayTimeRemaining((GetTimerRemaining(runningTimer) + 9) / 10);
 }
 
 void EnterRunningState(int which)
 {
-    int seconds = (which == 0) ? button1TimerDuration : button2TimerDuration;
-    runningTimer = StartTimer(seconds);
-    DisplayTimeRemaining(seconds - 1);
+    int tenths = (which == 0) ? button1TimerDuration : button2TimerDuration;
+    runningTimer = StartTimer(tenths);
+    if(debugTimers) printf("runningTimer = %d\n", runningTimer);
     appState = STATE_RUNNING;
-}
-
-void UpdateRunningScreen()
-{
-    DisplayTimeRemaining(GetTimerRemaining(runningTimer));
+    UpdateRunningState();
 }
 
 void EnterWaitingState()
@@ -97,6 +98,7 @@ void EnterWaitingState()
     DisplayOnButton(2, "4m");
     DisplayString("Press Button\nTo Left\n");
     waitingTimer = StartTimer(waitingToDarkDuration);
+    if(debugTimers) printf("waitingTimer = %d\n", waitingTimer);
     appState = STATE_WAITING;
 }
 
@@ -394,31 +396,44 @@ const unsigned char timerBeep_bytes[] = {
 };
 unsigned int timerBeep_length = 4608;
 
-void UpdateFinishedScreen()
+void AlarmStateBeep()
 {
-    if(finishedStateStep == FINISHED_BEEP) {
-        finishedStateStep = FINISHED_QUIET;
-        DisplayString("--:--");
-    } else if(finishedStateStep == FINISHED_QUIET) {
-        beepClip = PlayClip(timerBeep_bytes, sizeof(timerBeep_bytes));
-        finishedStateStep = FINISHED_BEEP;
+    if(debugStates) printf("AlarmStateBeep\n");
+    alarmStepTimer = StartTimer(5);
+    if(debugTimers) printf("alarmStepTimer = %d\n", alarmStepTimer);
+    beepClip = PlayClip(timerBeep_bytes, sizeof(timerBeep_bytes));
+    alarmStateStep = ALARM_BEEP;
+}
+
+void AlarmStateQuiet()
+{
+    if(debugStates) printf("AlarmStatQuiet\n");
+    alarmStepTimer = StartTimer(5);
+    if(debugTimers) printf("alarmStepTimer = %d\n", alarmStepTimer);
+    alarmStateStep = ALARM_QUIET;
+}
+
+void UpdateAlarmState()
+{
+    if(alarmStateStep == ALARM_BEEP) {
         DisplayTimeRemaining(0);
+    } else if(alarmStateStep == ALARM_QUIET) {
+        DisplayString("--:--");
     }
-    finishedStepTimer = StartTimer(1);
 }
 
-void EnterFinishedState()
+void EnterAlarmState()
 {
-    if(debugStates) printf("EnterFinishedState\n");
-    appState = STATE_FINISHED;
-    finishedStateStep = FINISHED_QUIET;
-    finishedTimer = StartTimer(finishedToWaitingDuration);
-    UpdateFinishedScreen();
+    if(debugStates) printf("EnterAlarmState\n");
+    appState = STATE_ALARM;
+    alarmTimer = StartTimer(alarmToWaitingDuration);
+    if(debugTimers) printf("alarmTimer = %d\n", alarmTimer);
+    AlarmStateBeep();
 }
 
-void UpdateWaitingScreen()
+void UpdateWaitingState()
 {
-    // do something here; show current time, something
+    // do something here; show current time, animation, ...
 }
 
 void EnterDarkState()
@@ -445,6 +460,7 @@ int HandleEvent(const Event& e)
                     break;
                 case STATE_WAITING:
                     CancelTimer(waitingTimer);
+                    waitingTimer = -1;
                     if(e.data == BUTTON_1) {
                         EnterRunningState(0);
                     } else if(e.data == BUTTON_2) {
@@ -460,10 +476,12 @@ int HandleEvent(const Event& e)
                 case STATE_PAUSED:
                     abort(); // implement me
                     break;
-                case STATE_FINISHED:
+                case STATE_ALARM:
                     CancelClip(beepClip);
-                    CancelTimer(finishedTimer);
-                    CancelTimer(finishedStepTimer);
+                    CancelTimer(alarmTimer);
+                    alarmTimer = -1;
+                    CancelTimer(alarmStepTimer);
+                    alarmStepTimer = -1;
                     EnterWaitingState();
                     break;
             }
@@ -485,7 +503,7 @@ int HandleEvent(const Event& e)
                 case STATE_PAUSED:
                     abort(); // implement me
                     break;
-                case STATE_FINISHED:
+                case STATE_ALARM:
                     abort(); // implement me
                     break;
             }
@@ -499,24 +517,37 @@ int HandleEvent(const Event& e)
                     // Won't Happen
                     break;
                 case STATE_WAITING:
+                    printf("e.data = %d\n", e.data);
+                    printf("waitingTimer = %d\n", waitingTimer);
+                    printf("runningTimer = %d\n", runningTimer);
+                    printf("alarmTimer = %d\n", alarmTimer);
+                    printf("alarmStepTimer = %d\n", alarmStepTimer);
                     assert(e.data == waitingTimer);
+                    waitingTimer = -1;
                     EnterDarkState();
                     break;
                 case STATE_RUNNING:
-                    EnterFinishedState();
+                    assert(e.data == runningTimer);
+                    runningTimer = -1;
+                    EnterAlarmState();
                     break;
                 case STATE_PAUSED:
                     abort(); // implement me
                     break;
-                case STATE_FINISHED:
-                    if(e.data == finishedTimer) {
-                        CancelTimer(finishedStepTimer);
-                        finishedStepTimer = -1;
+                case STATE_ALARM:
+                    if(e.data == alarmTimer) {
+                        CancelTimer(alarmStepTimer);
+                        alarmStepTimer = -1;
                         CancelClip(beepClip);
                         beepClip = -1;
                         EnterWaitingState();
-                    } else if(e.data == finishedStepTimer) {
-                        UpdateFinishedScreen();
+                    } else if(e.data == alarmStepTimer) {
+                        if(alarmStateStep == ALARM_BEEP) {
+                            AlarmStateQuiet();
+                        } else if(alarmStateStep == ALARM_QUIET) {
+                            AlarmStateBeep();
+                        }
+                        UpdateAlarmState();
                     } else {
                         abort();
                     }
@@ -533,16 +564,16 @@ int HandleEvent(const Event& e)
                     break;
                 case STATE_WAITING:
                     assert(e.data == waitingTimer);
-                    UpdateWaitingScreen();
+                    UpdateWaitingState();
                     break;
                 case STATE_RUNNING:
                     assert(e.data == runningTimer);
-                    UpdateRunningScreen();
+                    UpdateRunningState();
                     break;
                 case STATE_PAUSED:
                     abort(); // implement me
                     break;
-                case STATE_FINISHED:
+                case STATE_ALARM:
                     // Nothing
                     break;
             }
@@ -564,8 +595,7 @@ int HandleEvent(const Event& e)
                 case STATE_PAUSED:
                     // Won't Happen
                     break;
-                case STATE_FINISHED:
-                    assert(finishedStateStep == FINISHED_BEEP);
+                case STATE_ALARM:
                     beepClip = -1;
                     break;
             }

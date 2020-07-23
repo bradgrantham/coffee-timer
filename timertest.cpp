@@ -21,14 +21,14 @@ int HandleEvent(const Event& e)
         case TIMER_FINISHED: {
             printf("TIMER_FINISHED %d\n", e.data);
             cancelThisTimer = true;
-            myTimer = StartTimer(10);
+            myTimer = StartTimer(100);
             break;
         }
         case TIMER_TICK: {
             printf("TIMER_TICK %d\n", e.data);
             if(cancelThisTimer) {
                 int remaining = GetTimerRemaining(myTimer);
-                if(remaining < 5) {
+                if(remaining < 50) {
                     CancelTimer(myTimer);
                 }
             }
