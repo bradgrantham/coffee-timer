@@ -19,18 +19,39 @@ void InitFont()
     }
 }
 
-void DrawText( int x, int y, const char *str, enum Justification horizontaljust, const Color& fg, const Color& bg)
+void DrawText( int x, int y, const char *str, Justification horizontaljust, Justification verticaljust, const Color& fg, const Color& bg)
 {
     unsigned char    *glyph;
     int    fx, fy, sx, sy;
     const char    *e, *s;
 
     e = s = str;
-    sy = y;
+    int lineCount = 0;
+    while(*s != 0) {
+        lineCount++;
+        e = s;
+        while((*e != '\0') && (*e != '\n')) {
+            e++;
+        }
+	if(*e == '\n') {
+	    e++;
+        }
+        s = e;
+    }
+
+    e = s = str;
+    if(verticaljust == JUSTIFY_BOTTOM) {
+        sy = y - lineCount * fontheight;
+    } else if(verticaljust == JUSTIFY_CENTER) {
+        sy = y - lineCount * fontheight / 2;
+    } else { 
+        sy = y;
+    }
     while(*s != 0) {
         e = s;
-        while((*e != '\0') && (*e != '\n'))
+        while((*e != '\0') && (*e != '\n')) {
             e++;
+        }
 
         if(horizontaljust == JUSTIFY_RIGHT) sx = x - (e - s) * fontwidth;
         else if(horizontaljust == JUSTIFY_CENTER) sx = x - (e - s) * fontwidth / 2;

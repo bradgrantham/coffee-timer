@@ -51,29 +51,28 @@ constexpr Rect2Di timeDisplayArea{fontWidth * 2, 2 * fontHeight, 128 - fontWidth
 constexpr Rect2Di button1DisplayArea{fontWidth, 8, 128 - fontWidth * 2, fontHeight};
 constexpr Rect2Di button2DisplayArea{fontWidth, 128 - fontHeight - 8, 128 - fontWidth * 2, fontHeight};
 
+void DisplayString(const char *str)
+{
+    DrawRect(timeDisplayArea.left, timeDisplayArea.top, timeDisplayArea.width, timeDisplayArea.height, Color(0, 0, 0));
+    DrawText(timeDisplayArea.left + timeDisplayArea.width / 2, timeDisplayArea.top + timeDisplayArea.height / 2, str, JUSTIFY_CENTER, JUSTIFY_CENTER, Color(255, 255, 255), Color(0, 0, 0));
+}
+
 void DisplayTimeRemaining(int seconds)
 {
     char timestring[6];
     sprintf(timestring, "%02d:%02d", seconds / 60, seconds % 60);
-    DrawRect(timeDisplayArea.left, timeDisplayArea.top, timeDisplayArea.width, timeDisplayArea.height, Color(0, 0, 0));
-    DrawText(timeDisplayArea.left + timeDisplayArea.width / 2, timeDisplayArea.top, timestring, JUSTIFY_CENTER, Color(255, 255, 255), Color(0, 0, 0));
+    DisplayString(timestring);
 }
 
 void DisplayOnButton(int button, const char *str)
 {
     if(button == 1) {
         DrawRect(button1DisplayArea.left, button1DisplayArea.top, button1DisplayArea.width, button1DisplayArea.height, Color(0, 0, 0));
-        DrawText(button1DisplayArea.left, button1DisplayArea.top, str, JUSTIFY_LEFT, Color(255, 255, 255), Color(0, 0, 0));
+        DrawText(button1DisplayArea.left, button1DisplayArea.top, str, JUSTIFY_LEFT, JUSTIFY_TOP, Color(255, 255, 255), Color(0, 0, 0));
     } else {
         DrawRect(button2DisplayArea.left, button2DisplayArea.top, button2DisplayArea.width, button2DisplayArea.height, Color(0, 0, 0));
-        DrawText(button2DisplayArea.left, button2DisplayArea.top, str, JUSTIFY_LEFT, Color(255, 255, 255), Color(0, 0, 0));
+        DrawText(button2DisplayArea.left, button2DisplayArea.top, str, JUSTIFY_LEFT, JUSTIFY_TOP, Color(255, 255, 255), Color(0, 0, 0));
     }
-}
-
-void DisplayString(const char *str)
-{
-    DrawRect(timeDisplayArea.left, timeDisplayArea.top, timeDisplayArea.width, timeDisplayArea.height, Color(0, 0, 0));
-    DrawText(timeDisplayArea.left + timeDisplayArea.width / 2, timeDisplayArea.top, str, JUSTIFY_CENTER, Color(255, 255, 255), Color(0, 0, 0));
 }
 
 void UpdateRunningState()
