@@ -1,3 +1,23 @@
 If the handle event callback is exited and no timers and no clips
   are running, enter low-power mode (kill screen?)
 interrupt on button push -> wake from sleep so main() can run
+
+serial /dev/tty.usbmodem14103 115200 # in other window
+
+cd build
+PATH=$PATH:$HOME/packages/gcc-arm-none-eabi-7-2018-q2-update/bin/ make -j1
+# st-flash read old.stm32g4.firmware.bin 0x8000000 128k # only need once
+st-flash write build/coffee-timer.bin 0x8000000
+
+button press interrupt - first pass just set an int 1
+main loop on button delay .1s, print "button", set int 0
+debounce button press with a timeout
+make event queue with some kind of locking
+insert button press event
+sleep if event queue drained when exiting event handler
+verify button can wake board
+have some kind of time measurement in main loop
+Timer stuff, but print in main instead of graphics
+audio bits
+graphics to TFT - screen off, PWM
+sleep if event queue drained, screen is off, and 
