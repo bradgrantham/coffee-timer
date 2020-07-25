@@ -90,12 +90,13 @@ void HardFault_Handler(void)
   {
     /* USER CODE BEGIN W1_HardFault_IRQn 0 */
       for(int i = 0; i < 1; i++) {
-          HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-          HAL_Delay(200);
-          HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-          HAL_Delay(200);
+          for(int j = 0; j < 2000000; j++)
+              HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+          for(int j = 0; j < 2000000; j++)
+              HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
       }
-      HAL_Delay(1000);
+      for(int j = 0; j < 10000000; j++)
+          HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
     /* USER CODE END W1_HardFault_IRQn 0 */
   }
 }
@@ -126,6 +127,14 @@ void BusFault_Handler(void)
   while (1)
   {
     /* USER CODE BEGIN W1_BusFault_IRQn 0 */
+      for(int i = 0; i < 2; i++) {
+          for(int j = 0; j < 2000000; j++)
+              HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+          for(int j = 0; j < 2000000; j++)
+              HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+      }
+      for(int j = 0; j < 10000000; j++)
+          HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
     /* USER CODE END W1_BusFault_IRQn 0 */
   }
 }
@@ -212,6 +221,16 @@ void EXTI0_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI0_IRQn 0 */
 
+  if(0) for(int k = 0; k < 2; k++) {
+      for(int i = 0; i < 3; i++) {
+          for(int j = 0; j < 2000000; j++)
+              HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+          for(int j = 0; j < 2000000; j++)
+              HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+      }
+      for(int j = 0; j < 10000000; j++)
+          HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+  }
   BUTTON1_IRQ_Callback();
   /* USER CODE END EXTI0_IRQn 0 */
   /* USER CODE BEGIN EXTI0_IRQn 1 */
@@ -225,6 +244,16 @@ void EXTI0_IRQHandler(void)
 void EXTI1_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI1_IRQn 0 */
+  if(0) for(int k = 0; k < 2; k++) {
+      for(int i = 0; i < 4; i++) {
+          for(int j = 0; j < 2000000; j++)
+              HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+          for(int j = 0; j < 2000000; j++)
+              HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+      }
+      for(int j = 0; j < 10000000; j++)
+          HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+  }
   BUTTON2_IRQ_Callback();
   /* USER CODE END EXTI1_IRQn 0 */
   /* USER CODE BEGIN EXTI1_IRQn 1 */

@@ -81,7 +81,7 @@ void BUTTON1_IRQ_Callback()
     HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, led ? GPIO_PIN_SET : GPIO_PIN_RESET); // XXX debug
     led = !led; // XXX debug
     pin0 = 1;
-    HAL_Delay(10);
+    // HAL_Delay(10);
     __HAL_GPIO_EXTI_CLEAR_IT(BUTTON1_Pin);
     NVIC_ClearPendingIRQ(EXTI0_IRQn);
 }
@@ -91,7 +91,7 @@ void BUTTON2_IRQ_Callback()
     HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, led ? GPIO_PIN_SET : GPIO_PIN_RESET); // XXX debug
     led = !led; // XXX debug
     pin1 = 1;
-    HAL_Delay(10);
+    // HAL_Delay(10);
     __HAL_GPIO_EXTI_CLEAR_IT(BUTTON2_Pin);
     NVIC_ClearPendingIRQ(EXTI1_IRQn);
 }
@@ -101,10 +101,10 @@ char printbuffer[128];
 void blargle()
 {
   for(int i = 0; i < 2; i++) {
-      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-      HAL_Delay(500);
-      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-      HAL_Delay(500);
+      for(int j = 0; j < 2000000; j++)
+          HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+      for(int j = 0; j < 2000000; j++)
+          HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
   }
   sprintf(printbuffer, "hello there!\n");
   HAL_UART_Transmit(&huart2, (uint8_t *)printbuffer, strlen(printbuffer), HAL_MAX_DELAY);
