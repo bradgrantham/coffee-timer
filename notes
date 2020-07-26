@@ -9,10 +9,9 @@ PATH=$PATH:$HOME/packages/gcc-arm-none-eabi-7-2018-q2-update/bin/ make -j1
 # st-flash read old.stm32g4.firmware.bin 0x8000000 128k # only need once
 st-flash write build/coffee-timer.bin 0x8000000
 
-sleep if event queue drained when exiting event handler
-verify button can wake board
 have some kind of time measurement in main loop
 Timer stuff, but print in main instead of graphics
 audio bits
 graphics to TFT - screen off, PWM
-sleep if event queue drained, screen is off, and 
+sleep if event queue drained when exiting event handler (timeout screen?)
+verify button can wake board
