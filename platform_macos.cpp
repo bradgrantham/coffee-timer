@@ -433,6 +433,7 @@ struct Timer {
     { }
 };
 
+constexpr auto oneTenthSecond = std::chrono::microseconds(100000);
 constexpr int MAX_TIMERS = 16;
 Timer timers[MAX_TIMERS];
 
@@ -475,7 +476,7 @@ int StartTimer(int tenths)
 
     Timer& t = timers[timer];
     t.running = true;
-    t.nextTick = std::chrono::steady_clock::now() + std::chrono::microseconds(100000);
+    t.nextTick = std::chrono::steady_clock::now() + oneTenthSecond;
     t.remaining = tenths - 1;
 
     return timer;
@@ -565,7 +566,7 @@ int main(int argc, char **argv)
                     t.remaining --;
                     if(t.remaining > 0) {
                         EventQueue.push_back({TIMER_TICK, i});
-                        t.nextTick = t.nextTick + std::chrono::microseconds(100000);
+                        t.nextTick = t.nextTick + oneTenthSecond;
                     } else {
                         EventQueue.push_back({TIMER_FINISHED, i});
                         t.running = false;
