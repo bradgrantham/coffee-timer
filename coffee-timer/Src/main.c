@@ -25,8 +25,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
-#include "../../platform.h"
-
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -55,6 +53,12 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
+int __io_putchar(int ch)
+{
+    HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
+    return ch;
+}
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -73,58 +77,12 @@ static void MX_NVIC_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-#define QUEUE_CAPACITY 64
-
-struct queue {
-    unsigned int next_head;
-    unsigned int tail;
-    Event q[QUEUE_CAPACITY];
-};
-
-inline static void queue_init(struct queue *q)
-{
-    q->next_head = 0;
-    q->tail = 0;
-}
-
-// Protect with critical section if not called from producer
-int queue_isfull(struct queue *q)
-{
-    unsigned int length = (q->next_head + QUEUE_CAPACITY - q->tail) % QUEUE_CAPACITY;
-    return length == QUEUE_CAPACITY - 1;
-}
-
-// Protect with critical section if not called from consumer
-int queue_isempty(struct queue *q)
-{
-    return q->next_head == q->tail;
-}
-
-// Protect with critical section if not called from producer
-void queue_enq(struct queue *q, const Event* e)
-{
-    memcpy(&q->q[q->next_head], e, sizeof(Event));
-    q->next_head = (q->next_head + 1) % QUEUE_CAPACITY;
-}
-
-// Protect with critical section if not called from consumer
-void queue_deq(struct queue *q, Event *e)
-{
-    memcpy(e, &q->q[q->tail], sizeof(Event));
-    q->tail = (q->tail + 1) % QUEUE_CAPACITY;
-}
-
-struct queue EventQueue;
-
 #define BUTTON_MEASURE_MILLIS 50
-#define LONG_PRESS_DURATION_MILLIS 500
 
 int button1_changed = 0;
 uint32_t button1_changed_millis = 0;
 int button2_changed = 0;
 uint32_t button2_changed_millis = 0;
-
-int led = 0;
 
 void BUTTON1_IRQ_Callback()
 {
@@ -160,11 +118,9 @@ void blargle()
   HAL_UART_Transmit(&huart2, (uint8_t *)printbuffer, strlen(printbuffer), HAL_MAX_DELAY);
 }
 
-int button1_pressed = 0;
-int button1_pressed_millis;
-int button2_pressed = 0;
-int button2_pressed_millis;
-
+extern void ButtonPress(int button, uint32_t when);
+extern void ButtonRelease(int button, uint32_t when);
+extern int ProcessEvents();
 
 /* USER CODE END 0 */
 
@@ -208,6 +164,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   blargle();
+
+  printf("printf test\n");
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -232,46 +190,14 @@ int main(void)
 
     if(button1_changed) {
         HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-        uint32_t millis = HAL_GetTick();
-        uint32_t duration = millis - button1_changed_millis;
+        uint32_t now_millis = HAL_GetTick();
+        uint32_t duration = now_millis - button1_changed_millis;
 
         if(duration > BUTTON_MEASURE_MILLIS) {
-            if(HAL_GPIO_ReadPin(BUTTON2_GPIO_Port, BUTTON1_Pin) == GPIO_PIN_SET) {
-                button1_pressed = 1;
-                button1_pressed_millis = HAL_GetTick();
-                sprintf(printbuffer, "1 pressed\n");
-                HAL_UART_Transmit(&huart2, (uint8_t *)printbuffer, strlen(printbuffer), HAL_MAX_DELAY);
-            } else if(button1_pressed) {
-                duration = millis - button1_pressed_millis;
-                sprintf(printbuffer, "released %u\n", duration);
-                if(duration > LONG_PRESS_DURATION_MILLIS) {
-                    if(button2_pressed) {
-                        Event e;
-                        e.type = LONG_PRESS;
-                        e.data = BUTTON_1 | BUTTON_2;
-                        queue_enq(&EventQueue, &e);
-                        button2_pressed = 0;
-                    } else {
-                        Event e;
-                        e.type = LONG_PRESS;
-                        e.data = BUTTON_1;
-                        queue_enq(&EventQueue, &e);
-                    }
-                } else {
-                    if(button2_pressed) {
-                        Event e;
-                        e.type = SHORT_PRESS;
-                        e.data = BUTTON_1 | BUTTON_2;
-                        queue_enq(&EventQueue, &e);
-                        button2_pressed = 0;
-                    } else {
-                        Event e;
-                        e.type = SHORT_PRESS;
-                        e.data = BUTTON_1;
-                        queue_enq(&EventQueue, &e);
-                    }
-                }
-                button1_pressed = 0;
+            if(HAL_GPIO_ReadPin(BUTTON1_GPIO_Port, BUTTON1_Pin) == GPIO_PIN_SET) {
+                ButtonPress(1, button1_changed_millis);
+            } else {
+                ButtonRelease(1, button1_changed_millis);
             }
             button1_changed = 0;
         }
@@ -279,58 +205,23 @@ int main(void)
 
     if(button2_changed) {
         HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-        uint32_t millis = HAL_GetTick();
-        uint32_t duration = millis - button2_changed_millis;
+        uint32_t now_millis = HAL_GetTick();
+        uint32_t duration = now_millis - button2_changed_millis;
 
         if(duration > BUTTON_MEASURE_MILLIS) {
             if(HAL_GPIO_ReadPin(BUTTON2_GPIO_Port, BUTTON2_Pin) == GPIO_PIN_SET) {
-                button2_pressed = 1;
-                button2_pressed_millis = HAL_GetTick();
-                sprintf(printbuffer, "2 pressed\n");
-                HAL_UART_Transmit(&huart2, (uint8_t *)printbuffer, strlen(printbuffer), HAL_MAX_DELAY);
-            } else if(button2_pressed) {
-                duration = millis - button2_pressed_millis;
-                sprintf(printbuffer, "released %u\n", duration);
-                if(duration > LONG_PRESS_DURATION_MILLIS) {
-                    if(button1_pressed) {
-                        Event e;
-                        e.type = LONG_PRESS;
-                        e.data = BUTTON_1 | BUTTON_2;
-                        queue_enq(&EventQueue, &e);
-                        button1_pressed = 0;
-                    } else {
-                        Event e;
-                        e.type = LONG_PRESS;
-                        e.data = BUTTON_2;
-                        queue_enq(&EventQueue, &e);
-                    }
-                } else {
-                    if(button1_pressed) {
-                        Event e;
-                        e.type = SHORT_PRESS;
-                        e.data = BUTTON_1 | BUTTON_2;
-                        queue_enq(&EventQueue, &e);
-                        button1_pressed = 0;
-                    } else {
-                        Event e;
-                        e.type = SHORT_PRESS;
-                        e.data = BUTTON_2;
-                        queue_enq(&EventQueue, &e);
-                    }
-                }
-                button2_pressed = 0;
+                ButtonPress(2, button2_changed_millis);
+            } else {
+                ButtonRelease(2, button2_changed_millis);
             }
             button2_changed = 0;
         }
     }
 
-    while(!queue_isempty(&EventQueue)) {
-        Event e;
-        queue_deq(&EventQueue, &e);
+    int enterDeepSleep = ProcessEvents();
 
-        sprintf(printbuffer, "Event %d with data %d\n", e.type, e.data);
-        HAL_UART_Transmit(&huart2, (uint8_t *)printbuffer, strlen(printbuffer), HAL_MAX_DELAY);
-        // HandleEvent(&e);
+    if(enterDeepSleep) {
+        /* deep sleep here */
     }
   }
   /* USER CODE END 3 */

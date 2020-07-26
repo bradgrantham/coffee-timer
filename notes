@@ -9,8 +9,6 @@ PATH=$PATH:$HOME/packages/gcc-arm-none-eabi-7-2018-q2-update/bin/ make -j1
 # st-flash read old.stm32g4.firmware.bin 0x8000000 128k # only need once
 st-flash write build/coffee-timer.bin 0x8000000
 
-get printf working
-do you move to C++ somehow by having a separate platform source or some such?
 sleep if event queue drained when exiting event handler
 verify button can wake board
 have some kind of time measurement in main loop
