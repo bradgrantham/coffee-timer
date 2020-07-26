@@ -2,30 +2,31 @@
 #define _PLATFORM_H_
 
 #include <stdint.h>
-#include <cstdlib>
+#include <stdlib.h>
 
-enum EventType {
+typedef enum EventType {
     INIT,
     SHORT_PRESS,
     LONG_PRESS,
     TIMER_TICK,
     TIMER_FINISHED,
     CLIP_FINISHED,
-};
+} EventType;
 
-enum {
+typedef enum ButtonPressMask {
     BUTTON_1 = 0x01,
     BUTTON_2 = 0x02,
     BUTTON_3 = 0x04,
     BUTTON_4 = 0x08,
-};
+} ButtonPressMask;
 
-struct Event
+typedef struct Event
 {
     EventType type;
     int data;
-};
+} Event;
 
+#if 0
 struct Color
 {
     uint8_t r, g, b;
@@ -39,6 +40,9 @@ struct Color
         r(r), g(g), b(b)
     {}
 };
+#else
+typedef uint32_t Color;
+#endif
 
 enum {
     NO_ERROR = 0,
@@ -49,25 +53,33 @@ enum {
 
 // Provided by the platform:
 
+#ifdef __cplusplus
 extern "C" {
+#endif /* __cplusplus */
 
     int StartTimer(int tenths); // Tenths of seconds
     int CancelTimer(int timer);
     int GetTimerRemaining(int timer);
-    int DrawRect(int x, int y, int w, int h, const Color& c);
-    int DrawBitmap(int x, int y, int w, int h, uint8_t *bits, size_t rowBytes, const Color& fg, const Color& bg);
-    int SetScreen(bool power);
+    int DrawRect(int x, int y, int w, int h, Color c);
+    int DrawBitmap(int x, int y, int w, int h, uint8_t *bits, size_t rowBytes, Color fg, Color bg);
+    int SetScreen(int power);
     int PlayClip(const uint8_t *samples8KMono, size_t size);
     int CancelClip(int clip);
 
+#ifdef __cplusplus
 };
+#endif /* __cplusplus */
 
 // Provided by the app:
 
+#ifdef __cplusplus
 extern "C" {
+#endif /* __cplusplus */
 
-    int HandleEvent(const Event& e);
+    int HandleEvent(const Event* e);
 
+#ifdef __cplusplus
 };
+#endif /* __cplusplus */
 
 #endif /* _PLATFORM_H_ */

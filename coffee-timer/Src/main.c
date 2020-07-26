@@ -25,6 +25,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include "../../platform.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -71,27 +73,75 @@ static void MX_NVIC_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-int pin0 = 0;
-int pin1 = 0;
+#define QUEUE_CAPACITY 64
+
+struct queue {
+    unsigned int next_head;
+    unsigned int tail;
+    Event q[QUEUE_CAPACITY];
+};
+
+inline static void queue_init(struct queue *q)
+{
+    q->next_head = 0;
+    q->tail = 0;
+}
+
+// Protect with critical section if not called from producer
+int queue_isfull(struct queue *q)
+{
+    unsigned int length = (q->next_head + QUEUE_CAPACITY - q->tail) % QUEUE_CAPACITY;
+    return length == QUEUE_CAPACITY - 1;
+}
+
+// Protect with critical section if not called from consumer
+int queue_isempty(struct queue *q)
+{
+    return q->next_head == q->tail;
+}
+
+// Protect with critical section if not called from producer
+void queue_enq(struct queue *q, const Event* e)
+{
+    memcpy(&q->q[q->next_head], e, sizeof(Event));
+    q->next_head = (q->next_head + 1) % QUEUE_CAPACITY;
+}
+
+// Protect with critical section if not called from consumer
+void queue_deq(struct queue *q, Event *e)
+{
+    memcpy(e, &q->q[q->tail], sizeof(Event));
+    q->tail = (q->tail + 1) % QUEUE_CAPACITY;
+}
+
+struct queue EventQueue;
+
+#define BUTTON_MEASURE_MILLIS 50
+#define LONG_PRESS_DURATION_MILLIS 500
+
+int button1_changed = 0;
+uint32_t button1_changed_millis = 0;
+int button2_changed = 0;
+uint32_t button2_changed_millis = 0;
 
 int led = 0;
 
 void BUTTON1_IRQ_Callback()
 {
-    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, led ? GPIO_PIN_SET : GPIO_PIN_RESET); // XXX debug
-    led = !led; // XXX debug
-    pin0 = 1;
-    // HAL_Delay(10);
+    if(!button1_changed) {
+        button1_changed = 1;
+        button1_changed_millis = HAL_GetTick();
+    }
     __HAL_GPIO_EXTI_CLEAR_IT(BUTTON1_Pin);
     NVIC_ClearPendingIRQ(EXTI0_IRQn);
 }
 
 void BUTTON2_IRQ_Callback()
 {
-    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, led ? GPIO_PIN_SET : GPIO_PIN_RESET); // XXX debug
-    led = !led; // XXX debug
-    pin1 = 1;
-    // HAL_Delay(10);
+    if(!button2_changed) {
+        button2_changed = 1;
+        button2_changed_millis = HAL_GetTick();
+    }
     __HAL_GPIO_EXTI_CLEAR_IT(BUTTON2_Pin);
     NVIC_ClearPendingIRQ(EXTI1_IRQn);
 }
@@ -109,6 +159,12 @@ void blargle()
   sprintf(printbuffer, "hello there!\n");
   HAL_UART_Transmit(&huart2, (uint8_t *)printbuffer, strlen(printbuffer), HAL_MAX_DELAY);
 }
+
+int button1_pressed = 0;
+int button1_pressed_millis;
+int button2_pressed = 0;
+int button2_pressed_millis;
+
 
 /* USER CODE END 0 */
 
@@ -163,8 +219,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
     if(0) {
         if((HAL_GPIO_ReadPin(BUTTON1_GPIO_Port, BUTTON1_Pin) != GPIO_PIN_RESET) ||
-          (HAL_GPIO_ReadPin(BUTTON2_GPIO_Port, BUTTON2_Pin) != GPIO_PIN_RESET) ||
-          (HAL_GPIO_ReadPin(BUTTON3_GPIO_Port, BUTTON3_Pin) != GPIO_PIN_RESET)) {
+          (HAL_GPIO_ReadPin(BUTTON2_GPIO_Port, BUTTON2_Pin) != GPIO_PIN_RESET)) {
 
             HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
 
@@ -175,38 +230,107 @@ int main(void)
         }
     }
 
-    // HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, led ? GPIO_PIN_SET : GPIO_PIN_RESET);
-    // HAL_Delay(500);
-    // led = !led;
+    if(button1_changed) {
+        HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+        uint32_t millis = HAL_GetTick();
+        uint32_t duration = millis - button1_changed_millis;
 
-    // printf("hello!\n");
-    int j, k, l;
-    j = HAL_GPIO_ReadPin(BUTTON1_GPIO_Port, BUTTON1_Pin);
-    k = HAL_GPIO_ReadPin(BUTTON2_GPIO_Port, BUTTON2_Pin);
-    l = HAL_GPIO_ReadPin(BUTTON3_GPIO_Port, BUTTON3_Pin);
-    sprintf(printbuffer, "%d, %d, %d!\n", j, k, l);
-    HAL_UART_Transmit(&huart2, (uint8_t *)printbuffer, strlen(printbuffer), HAL_MAX_DELAY);
-    HAL_Delay(100);
-
-    if(pin0) {
-        sprintf(printbuffer, "button1 interrupt!\n");
-        HAL_UART_Transmit(&huart2, (uint8_t *)printbuffer, strlen(printbuffer), HAL_MAX_DELAY);
-        pin0 = 0;
-        if(HAL_GPIO_ReadPin(BUTTON1_GPIO_Port, BUTTON1_Pin) == GPIO_PIN_SET) {
-            HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, led ? GPIO_PIN_SET : GPIO_PIN_SET);
-        } else {
-            HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, led ? GPIO_PIN_SET : GPIO_PIN_RESET);
+        if(duration > BUTTON_MEASURE_MILLIS) {
+            if(HAL_GPIO_ReadPin(BUTTON2_GPIO_Port, BUTTON1_Pin) == GPIO_PIN_SET) {
+                button1_pressed = 1;
+                button1_pressed_millis = HAL_GetTick();
+                sprintf(printbuffer, "1 pressed\n");
+                HAL_UART_Transmit(&huart2, (uint8_t *)printbuffer, strlen(printbuffer), HAL_MAX_DELAY);
+            } else if(button1_pressed) {
+                duration = millis - button1_pressed_millis;
+                sprintf(printbuffer, "released %u\n", duration);
+                if(duration > LONG_PRESS_DURATION_MILLIS) {
+                    if(button2_pressed) {
+                        Event e;
+                        e.type = LONG_PRESS;
+                        e.data = BUTTON_1 | BUTTON_2;
+                        queue_enq(&EventQueue, &e);
+                        button2_pressed = 0;
+                    } else {
+                        Event e;
+                        e.type = LONG_PRESS;
+                        e.data = BUTTON_1;
+                        queue_enq(&EventQueue, &e);
+                    }
+                } else {
+                    if(button2_pressed) {
+                        Event e;
+                        e.type = SHORT_PRESS;
+                        e.data = BUTTON_1 | BUTTON_2;
+                        queue_enq(&EventQueue, &e);
+                        button2_pressed = 0;
+                    } else {
+                        Event e;
+                        e.type = SHORT_PRESS;
+                        e.data = BUTTON_1;
+                        queue_enq(&EventQueue, &e);
+                    }
+                }
+                button1_pressed = 0;
+            }
+            button1_changed = 0;
         }
     }
-    if(pin1) {
-        sprintf(printbuffer, "button2 interrupt!\n");
-        HAL_UART_Transmit(&huart2, (uint8_t *)printbuffer, strlen(printbuffer), HAL_MAX_DELAY);
-        pin1 = 0;
-        if(HAL_GPIO_ReadPin(BUTTON2_GPIO_Port, BUTTON2_Pin) == GPIO_PIN_SET) {
-            HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, led ? GPIO_PIN_SET : GPIO_PIN_RESET);
-        } else {
-            HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, led ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
+    if(button2_changed) {
+        HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+        uint32_t millis = HAL_GetTick();
+        uint32_t duration = millis - button2_changed_millis;
+
+        if(duration > BUTTON_MEASURE_MILLIS) {
+            if(HAL_GPIO_ReadPin(BUTTON2_GPIO_Port, BUTTON2_Pin) == GPIO_PIN_SET) {
+                button2_pressed = 1;
+                button2_pressed_millis = HAL_GetTick();
+                sprintf(printbuffer, "2 pressed\n");
+                HAL_UART_Transmit(&huart2, (uint8_t *)printbuffer, strlen(printbuffer), HAL_MAX_DELAY);
+            } else if(button2_pressed) {
+                duration = millis - button2_pressed_millis;
+                sprintf(printbuffer, "released %u\n", duration);
+                if(duration > LONG_PRESS_DURATION_MILLIS) {
+                    if(button1_pressed) {
+                        Event e;
+                        e.type = LONG_PRESS;
+                        e.data = BUTTON_1 | BUTTON_2;
+                        queue_enq(&EventQueue, &e);
+                        button1_pressed = 0;
+                    } else {
+                        Event e;
+                        e.type = LONG_PRESS;
+                        e.data = BUTTON_2;
+                        queue_enq(&EventQueue, &e);
+                    }
+                } else {
+                    if(button1_pressed) {
+                        Event e;
+                        e.type = SHORT_PRESS;
+                        e.data = BUTTON_1 | BUTTON_2;
+                        queue_enq(&EventQueue, &e);
+                        button1_pressed = 0;
+                    } else {
+                        Event e;
+                        e.type = SHORT_PRESS;
+                        e.data = BUTTON_2;
+                        queue_enq(&EventQueue, &e);
+                    }
+                }
+                button2_pressed = 0;
+            }
+            button2_changed = 0;
         }
+    }
+
+    while(!queue_isempty(&EventQueue)) {
+        Event e;
+        queue_deq(&EventQueue, &e);
+
+        sprintf(printbuffer, "Event %d with data %d\n", e.type, e.data);
+        HAL_UART_Transmit(&huart2, (uint8_t *)printbuffer, strlen(printbuffer), HAL_MAX_DELAY);
+        // HandleEvent(&e);
     }
   }
   /* USER CODE END 3 */
@@ -533,12 +657,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : BUTTON3_Pin */
-  GPIO_InitStruct.Pin = BUTTON3_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(BUTTON3_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LD2_Pin */
   GPIO_InitStruct.Pin = LD2_Pin;

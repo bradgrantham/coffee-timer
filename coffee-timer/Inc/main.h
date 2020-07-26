@@ -77,8 +77,6 @@ void BUTTON2_IRQ_Callback();
 #define AUDIO_OUT_GPIO_Port GPIOA
 #define BACKLIGHT_PWM_Pin GPIO_PIN_8
 #define BACKLIGHT_PWM_GPIO_Port GPIOA
-#define BUTTON3_Pin GPIO_PIN_9
-#define BUTTON3_GPIO_Port GPIOA
 #define T_SWDIO_Pin GPIO_PIN_13
 #define T_SWDIO_GPIO_Port GPIOA
 #define T_SWCLK_Pin GPIO_PIN_14
