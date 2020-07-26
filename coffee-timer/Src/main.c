@@ -120,7 +120,8 @@ void blargle()
 
 extern void ButtonPress(int button, uint32_t when);
 extern void ButtonRelease(int button, uint32_t when);
-extern int ProcessEvents();
+extern int ProcessEvents(uint32_t now);
+extern void InitPlatform();
 
 /* USER CODE END 0 */
 
@@ -165,7 +166,7 @@ int main(void)
 
   blargle();
 
-  printf("printf test\n");
+  InitPlatform();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -175,6 +176,8 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    uint32_t now_millis = HAL_GetTick();
+
     if(0) {
         if((HAL_GPIO_ReadPin(BUTTON1_GPIO_Port, BUTTON1_Pin) != GPIO_PIN_RESET) ||
           (HAL_GPIO_ReadPin(BUTTON2_GPIO_Port, BUTTON2_Pin) != GPIO_PIN_RESET)) {
@@ -190,7 +193,6 @@ int main(void)
 
     if(button1_changed) {
         HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-        uint32_t now_millis = HAL_GetTick();
         uint32_t duration = now_millis - button1_changed_millis;
 
         if(duration > BUTTON_MEASURE_MILLIS) {
@@ -205,7 +207,6 @@ int main(void)
 
     if(button2_changed) {
         HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-        uint32_t now_millis = HAL_GetTick();
         uint32_t duration = now_millis - button2_changed_millis;
 
         if(duration > BUTTON_MEASURE_MILLIS) {
@@ -218,7 +219,7 @@ int main(void)
         }
     }
 
-    int enterDeepSleep = ProcessEvents();
+    int enterDeepSleep = ProcessEvents(now_millis);
 
     if(enterDeepSleep) {
         /* deep sleep here */
