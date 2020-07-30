@@ -1,5 +1,5 @@
 static int fontwidth = 8, fontheight = 16;
-static unsigned char fontbits[] = {
+static const unsigned char fontbits[] = {
 0x00,
 0x00,
 0x00,

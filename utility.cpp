@@ -4,7 +4,7 @@
 
 void DrawText( int x, int y, const char *str, Justification horizontaljust, Justification verticaljust, const Color& fg, const Color& bg)
 {
-    unsigned char    *glyph;
+    const unsigned char    *glyph;
     int    fx, fy, sx, sy;
     const char    *e, *s;
 

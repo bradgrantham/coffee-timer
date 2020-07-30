@@ -152,7 +152,7 @@ int DrawRect(int x, int y, int w, int h, const Color& c)
     return NO_ERROR;
 }
 
-int DrawBitmap(int left, int top, int w, int h, uint8_t *bits, size_t rowBytes, const Color& fg, const Color& bg)
+int DrawBitmap(int left, int top, int w, int h, const uint8_t *bits, size_t rowBytes, const Color& fg, const Color& bg)
 {
     for(int row = 0; row < h; row++) {
         for(int col = 0; col < w; col++) {
