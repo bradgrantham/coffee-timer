@@ -1,6 +1,8 @@
 #include <deque>
 #include <cstdio>
 #include <cstring>
+#include <cassert>
+#include <cmath>
 #include "main.h"
 #include "../../platform.h"
 
@@ -103,6 +105,84 @@ int GetTimerRemaining(int timer)
     return timers[timer].remaining;
 }
 
+bool clipPlaying = false;
+uint64_t clipFinishes;
+
+int PlayClip(const uint8_t *samples, size_t size)
+{
+    // XXX ao_play(audioDevice, (char*)samples, size);
+    printf("PlayClip\n");
+
+    clipPlaying = true;
+    clipFinishes = currentTimeMillis + size * 1000 / 8000;
+
+    return NO_ERROR;
+}
+
+int CancelClip(int tune)
+{
+    // XXX cancel playing of audio here
+    printf("CancelClip\n");
+
+    if(tune < 0) {
+        return INVALID_CLIP_NUMBER;
+    }
+    assert(tune == 0);
+    return NO_ERROR;
+}
+
+int SetScreen(bool powerOn)
+{
+    printf("set screen %d\n", powerOn);
+    return NO_ERROR;
+}
+
+int DrawRect(int x, int y, int w, int h, const Color& c)
+{
+#if 0
+    for(int row = y; row < y + h; row++) {
+        for(int col = x; col < x + w; col++) {
+            ScreenImage[(col + row * ScreenWidth) * 3 + 0] = c.r;
+            ScreenImage[(col + row * ScreenWidth) * 3 + 1] = c.g;
+            ScreenImage[(col + row * ScreenWidth) * 3 + 2] = c.b;
+        }
+    }
+#endif
+    printf("DrawRect\n");
+    return NO_ERROR;
+}
+
+int DrawBitmap(int left, int top, int w, int h, uint8_t *bits, size_t rowBytes, const Color& fg, const Color& bg)
+{
+    for(int row = 0; row < h; row++) {
+        for(int col = 0; col < w; col++) {
+            int whichByte = col / 8 + row * rowBytes;
+            int whichBit = col % 8;
+#if 0
+            uint8_t *pixel = ScreenImage + ((col + left) + (row + top) * ScreenWidth) * 3;
+            if(bits[whichByte] & (1 << whichBit)) {
+                pixel[0] = fg.r;
+                pixel[1] = fg.g;
+                pixel[2] = fg.b;
+            } else {
+                pixel[0] = bg.r;
+                pixel[1] = bg.g;
+                pixel[2] = bg.b;
+            }
+#endif
+            if(bits[whichByte] & (1 << whichBit)) {
+                int v = (fg.r + fg.g + fg.b) / 3;
+                putchar(" .-o*O@#"[(int)(floorf(v / 32))]);
+            } else {
+                int v = (bg.r + bg.g + bg.b) / 3;
+                putchar(" .-o*O@#"[(int)(floorf(v / 32))]);
+            }
+        }
+        printf("\n");
+    }
+    return NO_ERROR;
+}
+
 void InitPlatform()
 {
     EventQueue.push_back({INIT, 0});
@@ -140,6 +220,8 @@ int ProcessEvents(uint32_t now_ticks)
     }
     return 0;
 }
+
+
 
 };
 

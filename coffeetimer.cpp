@@ -446,7 +446,6 @@ int HandleEvent(const Event& e)
 {
     switch(e.type) {
         case INIT: {
-            InitFont();
             EnterWaitingState();
             break;
         }

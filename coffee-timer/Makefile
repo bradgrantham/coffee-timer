@@ -36,6 +36,8 @@ BUILD_DIR = build
 ######################################
 CXX_SOURCES =  \
 Src/platform.cpp \
+../coffeetimer.cpp \
+../utility.cpp \
 $(NULL)
 
 # C sources

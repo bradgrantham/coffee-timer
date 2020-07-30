@@ -2,23 +2,6 @@
 
 #include "8x16.h"
 
-void InitFont()
-{
-    for(size_t i = 0; i < sizeof(fontbits); i++) {
-        // UGH
-        uint8_t r = 
-            ((fontbits[i] & 0x80) >> 7) |
-            ((fontbits[i] & 0x40) >> 5) |
-            ((fontbits[i] & 0x20) >> 3) |
-            ((fontbits[i] & 0x10) >> 1) |
-            ((fontbits[i] & 0x08) << 1) |
-            ((fontbits[i] & 0x04) << 3) |
-            ((fontbits[i] & 0x02) << 5) |
-            ((fontbits[i] & 0x08) << 7);
-        fontbits[i] = r;
-    }
-}
-
 void DrawText( int x, int y, const char *str, Justification horizontaljust, Justification verticaljust, const Color& fg, const Color& bg)
 {
     unsigned char    *glyph;
