@@ -12,3 +12,6 @@ showevents_app: showevents_app.cpp platform_macos.cpp platform.h 8x16.h
 timertest: timertest.cpp platform_macos.cpp platform.h 8x16.h
 	c++ -g -DHOSTED -Wall -I. -I/opt/local/include/ -L/opt/local/lib -std=c++17 -lglfw -lao -framework OpenGL -framework Cocoa -framework IOkit platform_macos.cpp timertest.cpp gl_utility.cpp -o timertest
 
+cliptest: cliptest.cpp platform_macos.cpp platform.h 8x16.h
+	c++ -g -DHOSTED -Wall -I. -I/opt/local/include/ -L/opt/local/lib -std=c++17 -lglfw -lao -framework OpenGL -framework Cocoa -framework IOkit platform_macos.cpp cliptest.cpp gl_utility.cpp -o cliptest
+

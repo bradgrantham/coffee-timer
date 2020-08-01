@@ -10,12 +10,20 @@
 // before main() and therefore cause a silent hang.
 std::deque<Event> EventQueue;
 
-extern "C" {
 
 bool button_pressed[2] = {false, false};
 uint32_t button_pressed_ticks[2];
 
 constexpr int LONG_PRESS_DURATION_MILLIS = 500;
+
+extern "C" {
+
+void ButtonPress(int button, uint32_t pressStartTicks);
+void ButtonRelease(int button, uint32_t releaseStartTicks);
+int ProcessEvents(uint32_t now_ticks);
+void InitPlatform();
+
+};
 
 void ButtonPress(int button, uint32_t pressStartTicks)
 {
@@ -111,6 +119,7 @@ uint64_t clipFinishes;
 int PlayClip(const uint8_t *samples, size_t size)
 {
     // XXX ao_play(audioDevice, (char*)samples, size);
+    DACPlay(samples, size);
     printf("PlayClip\n");
 
     clipPlaying = true;
@@ -220,8 +229,3 @@ int ProcessEvents(uint32_t now_ticks)
     }
     return 0;
 }
-
-
-
-};
-

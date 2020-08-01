@@ -60,6 +60,8 @@ void Error_Handler(void);
 void BUTTON1_IRQ_Callback();
 void BUTTON2_IRQ_Callback();
 
+void DACPlay(const uint8_t *samples, size_t size);
+
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
