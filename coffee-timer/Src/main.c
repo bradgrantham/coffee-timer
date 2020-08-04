@@ -20,10 +20,12 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+
+#include <stdio.h>
+#include <string.h>
 
 /* USER CODE END Includes */
 
@@ -129,12 +131,20 @@ extern int ProcessEvents(uint32_t now);
 extern void InitPlatform();
 
 int DMAcomplete = 0;
+int DACerror = 0;
 
 void HAL_DAC_ConvCpltCallbackCh1(DAC_HandleTypeDef *hdac)
 {
     DMAcomplete = 1;
 }
 
+void HAL_DAC_ErrorCallbackCh1(DAC_HandleTypeDef *hdac)
+{
+    DACerror = 1;
+}
+
+// It turns out that the destination size must be set to WORD.
+// https://community.st.com/s/question/0D50X0000BEXUjVSQX/haldacstartdma-stops-on-start-calling-haldacerrorcallbackch1
 void DACPlay(const uint8_t *samples, size_t sampleCount)
 {
     HAL_StatusTypeDef status;
@@ -151,7 +161,6 @@ void DACPlay(const uint8_t *samples, size_t sampleCount)
     // DMA1_Channel1->CCR |= 0x20;
     printf("after DMA1_Channel1->CCR %08lX\n", DMA1_Channel1->CCR);
     printf("after DMA1->ISR %08lX\n", DMA1->ISR);
-    while(1);
 }
 
 /* USER CODE END 0 */
@@ -188,7 +197,6 @@ int main(void)
   MX_DMA_Init();
   MX_DAC1_Init();
   MX_SPI1_Init();
-  MX_USB_Device_Init();
   MX_TIM1_Init();
   MX_TIM2_Init();
   MX_RTC_Init();
@@ -220,10 +228,14 @@ int main(void)
         printf("DMA was completed.\n");
         DMAcomplete = 0;
     }
+    if(DACerror) {
+        printf("DAC transfer had error.\n");
+        DACerror = 1;
+    }
     // printf("%lu\n", DMA1_Channel1->CNDTR);
     // printf("DAC1->CR %08lX\n", DAC1->CR); // verified as expected
     // printf("&DAC1->DHR8R1 %p\n", &DAC1->DHR8R1); // verified as expected
-    printf("DMA1_Channel1->CR %08lX\n", DMA1_Channel1->CCR); // verified as expected is TIMER2_TRGO
+    // printf("DMA1_Channel1->CR %08lX\n", DMA1_Channel1->CCR); // verified as expected is TIMER2_TRGO
     // printf("CPAR %08lX\n", DMA1_Channel1->CPAR); // verified as expected
     // printf("CMAR %08lX\n", DMA1_Channel1->CMAR); // verified as expected
     static uint16_t b = 0;
@@ -298,12 +310,10 @@ void SystemClock_Config(void)
   HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1);
   /** Initializes the CPU, AHB and APB busses clocks 
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSI48
-                              |RCC_OSCILLATORTYPE_LSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.LSIState = RCC_LSI_ON;
-  RCC_OscInitStruct.HSI48State = RCC_HSI48_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = RCC_PLLM_DIV4;
@@ -330,10 +340,8 @@ void SystemClock_Config(void)
   }
   /** Initializes the peripherals clocks 
   */
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USART2
-                              |RCC_PERIPHCLK_USB;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USART2;
   PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
-  PeriphClkInit.UsbClockSelection = RCC_USBCLKSOURCE_HSI48;
   PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSI;
 
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
@@ -710,7 +718,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, TFT_CS_Pin|TFT_RST_Pin|TFT_DC_Pin|LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : BUTTON1_Pin BUTTON2_Pin */
   GPIO_InitStruct.Pin = BUTTON1_Pin|BUTTON2_Pin;
@@ -718,12 +726,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : LD2_Pin */
-  GPIO_InitStruct.Pin = LD2_Pin;
+  /*Configure GPIO pins : TFT_CS_Pin TFT_RST_Pin TFT_DC_Pin LD2_Pin */
+  GPIO_InitStruct.Pin = TFT_CS_Pin|TFT_RST_Pin|TFT_DC_Pin|LD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }
 

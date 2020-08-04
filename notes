@@ -15,3 +15,6 @@ audio bits
 graphics to TFT - screen off, PWM
 sleep if event queue drained when exiting event handler (timeout screen?)
 verify button can wake board
+
+It turns out that the destination size must be set to WORD.
+https://community.st.com/s/question/0D50X0000BEXUjVSQX/haldacstartdma-stops-on-start-calling-haldacerrorcallbackch1
