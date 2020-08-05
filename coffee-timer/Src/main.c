@@ -26,6 +26,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "st7735.h"
 
 /* USER CODE END Includes */
 
@@ -163,6 +164,16 @@ void DACPlay(const uint8_t *samples, size_t sampleCount)
     printf("after DMA1->ISR %08lX\n", DMA1->ISR);
 }
 
+void SysDrawBitmap(int x, int y, const uint8_t* bits, int w, int h, int rowBytes, uint16_t fg, uint16_t bg)
+{
+    ST7735_DrawImageMonoRB(x, y, bits, w, h, rowBytes, fg, bg);
+}
+
+void SysDrawRect(int x, int y, int w, int h, uint16_t color)
+{
+    ST7735_FillRectangle(x, y, w, h, color);
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -204,6 +215,8 @@ int main(void)
   /* Initialize interrupts */
   MX_NVIC_Init();
   /* USER CODE BEGIN 2 */
+
+  ST7735_Init();
 
   hello();
 
@@ -491,7 +504,7 @@ static void MX_SPI1_Init(void)
   hspi1.Instance = SPI1;
   hspi1.Init.Mode = SPI_MODE_MASTER;
   hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi1.Init.DataSize = SPI_DATASIZE_4BIT;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
@@ -501,7 +514,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
   hspi1.Init.CRCPolynomial = 7;
   hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
-  hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  hspi1.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
   if (HAL_SPI_Init(&hspi1) != HAL_OK)
   {
     Error_Handler();
@@ -718,7 +731,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, TFT_CS_Pin|TFT_RST_Pin|TFT_DC_Pin|LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, ST7735_CS_Pin|ST7735_RES_Pin|ST7735_DC_Pin|LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : BUTTON1_Pin BUTTON2_Pin */
   GPIO_InitStruct.Pin = BUTTON1_Pin|BUTTON2_Pin;
@@ -726,8 +739,15 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : TFT_CS_Pin TFT_RST_Pin TFT_DC_Pin LD2_Pin */
-  GPIO_InitStruct.Pin = TFT_CS_Pin|TFT_RST_Pin|TFT_DC_Pin|LD2_Pin;
+  /*Configure GPIO pins : ST7735_CS_Pin ST7735_RES_Pin */
+  GPIO_InitStruct.Pin = ST7735_CS_Pin|ST7735_RES_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : ST7735_DC_Pin LD2_Pin */
+  GPIO_InitStruct.Pin = ST7735_DC_Pin|LD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

@@ -1,3 +1,11 @@
+To do
+    move to port of Adafruit library instead
+    clear screen to black on start
+    rotate 270 degrees
+    Find a way to not flash - update pixels once
+    better amplification
+    connect Lite and allow turning off backlight and turning off TFT
+
 If the handle event callback is exited and no timers and no clips
   are running, enter low-power mode (kill screen?)
 interrupt on button push -> wake from sleep so main() can run
@@ -18,3 +26,11 @@ verify button can wake board
 
 It turns out that the destination size must be set to WORD.
 https://community.st.com/s/question/0D50X0000BEXUjVSQX/haldacstartdma-stops-on-start-calling-haldacerrorcallbackch1
+
+From Adafruit_ST7735, for "green tab":
+Bcmd
+Rcmd1
+Rcmd2green
+Rcmd3
+setRotation(0);
+

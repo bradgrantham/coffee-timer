@@ -61,6 +61,9 @@ void BUTTON1_IRQ_Callback();
 void BUTTON2_IRQ_Callback();
 
 void DACPlay(const uint8_t *samples, size_t size);
+void SysDrawBitmap(int x, int y, const uint8_t* bits, int w, int h, int rowBytes, uint16_t fg, uint16_t bg);
+void SysDrawRect(int x, int y, int w, int h, uint16_t color);
+
 
 /* USER CODE END EFP */
 
@@ -85,12 +88,12 @@ void DACPlay(const uint8_t *samples, size_t size);
 #define T_SWCLK_GPIO_Port GPIOA
 #define T_SWO_Pin GPIO_PIN_3
 #define T_SWO_GPIO_Port GPIOB
-#define TFT_CS_Pin GPIO_PIN_5
-#define TFT_CS_GPIO_Port GPIOB
-#define TFT_RST_Pin GPIO_PIN_6
-#define TFT_RST_GPIO_Port GPIOB
-#define TFT_DC_Pin GPIO_PIN_7
-#define TFT_DC_GPIO_Port GPIOB
+#define ST7735_CS_Pin GPIO_PIN_5
+#define ST7735_CS_GPIO_Port GPIOB
+#define ST7735_RES_Pin GPIO_PIN_6
+#define ST7735_RES_GPIO_Port GPIOB
+#define ST7735_DC_Pin GPIO_PIN_7
+#define ST7735_DC_GPIO_Port GPIOB
 #define LD2_Pin GPIO_PIN_8
 #define LD2_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */

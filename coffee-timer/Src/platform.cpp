@@ -146,8 +146,17 @@ int SetScreen(bool powerOn)
     return NO_ERROR;
 }
 
+uint16_t ColorToU16R5G6B5(const Color& c)
+{
+    return
+        ((c.r >> 3) << 11) | 
+        ((c.g >> 2) <<  5) | 
+        ((c.b >> 3) <<  0);
+}
+
 int DrawRect(int x, int y, int w, int h, const Color& c)
 {
+    SysDrawRect(x, y, w, h, ColorToU16R5G6B5(c));
 #if 0
     for(int row = y; row < y + h; row++) {
         for(int col = x; col < x + w; col++) {
@@ -163,11 +172,12 @@ int DrawRect(int x, int y, int w, int h, const Color& c)
 
 int DrawBitmap(int left, int top, int w, int h, const uint8_t *bits, size_t rowBytes, const Color& fg, const Color& bg)
 {
+    SysDrawBitmap(left, top, bits, w, h, rowBytes, ColorToU16R5G6B5(fg), ColorToU16R5G6B5(bg));
+#if 0
     for(int row = 0; row < h; row++) {
         for(int col = 0; col < w; col++) {
             int whichByte = col / 8 + row * rowBytes;
             int whichBit = col % 8;
-#if 0
             uint8_t *pixel = ScreenImage + ((col + left) + (row + top) * ScreenWidth) * 3;
             if(bits[whichByte] & (1 << whichBit)) {
                 pixel[0] = fg.r;
@@ -178,7 +188,6 @@ int DrawBitmap(int left, int top, int w, int h, const uint8_t *bits, size_t rowB
                 pixel[1] = bg.g;
                 pixel[2] = bg.b;
             }
-#endif
             if(bits[whichByte] & (1 << whichBit)) {
                 int v = (fg.r + fg.g + fg.b) / 3;
                 putchar(" .-o*O@#"[(int)(floorf(v / 32))]);
@@ -189,6 +198,7 @@ int DrawBitmap(int left, int top, int w, int h, const uint8_t *bits, size_t rowB
         }
         printf("\n");
     }
+#endif
     return NO_ERROR;
 }
 
