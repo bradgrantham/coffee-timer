@@ -479,6 +479,7 @@ int StartTimer(int tenths)
 
     Timer& t = timers[timer];
     t.running = true;
+    t.paused = false;
     t.nextTick = std::chrono::steady_clock::now() + oneTenthSecond;
     t.remaining = tenths - 1;
 

@@ -83,6 +83,7 @@ int StartTimer(int tenths)
 
     Timer& t = timers[timer];
     t.running = true;
+    t.paused = false;
     t.nextTick = currentTimeMillis + oneTenthSecond;
     t.remaining = tenths - 1;
 
