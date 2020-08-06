@@ -426,10 +426,13 @@ void initialize_ui(const char *appName)
 
 struct Timer {
     bool running;
+    bool paused;
     int remaining;
     Timepoint nextTick;
+    std::chrono::microseconds remainingUntilNextTickPaused;
     Timer() :
-        running(false)
+        running(false),
+        paused(false)
     { }
 };
 
@@ -480,6 +483,35 @@ int StartTimer(int tenths)
     t.remaining = tenths - 1;
 
     return timer;
+}
+
+int PauseTimer(int timer)
+{
+    if(timer < 0 || !timers[timer].running) {
+        return INVALID_TIMER_NUMBER;
+    }
+    Timer& t = timers[timer];
+    if(t.paused) {
+        return TIMER_ALREADY_PAUSED;
+    }
+    t.paused = true;
+    t.remainingUntilNextTickPaused = std::chrono::duration_cast<std::chrono::microseconds>(t.nextTick - std::chrono::steady_clock::now());
+    return NO_ERROR;
+}
+
+int ResumeTimer(int timer)
+{
+    if(timer < 0 || !timers[timer].running) {
+        return INVALID_TIMER_NUMBER;
+    }
+    Timer& t = timers[timer];
+    if(!t.paused) {
+        return TIMER_NOT_PAUSED;
+    }
+    t.paused = false;
+    // XXX set nextTick to saved time plus now
+    t.nextTick = std::chrono::steady_clock::now() + t.remainingUntilNextTickPaused;
+    return NO_ERROR;
 }
 
 int CancelTimer(int timer)
@@ -561,7 +593,7 @@ int main(int argc, char **argv)
 
         for(int i = 0; i < MAX_TIMERS; i++) {
             Timer& t = timers[i];
-            if(t.running) {
+            if(t.running && !t.paused) {
                 if(now > t.nextTick) {
                     t.remaining --;
                     if(t.remaining > 0) {

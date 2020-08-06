@@ -44,7 +44,9 @@ enum {
     NO_ERROR = 0,
     OUT_OF_TIMERS = -1,
     INVALID_TIMER_NUMBER = -2,
-    INVALID_CLIP_NUMBER = -2,
+    INVALID_CLIP_NUMBER = -3,
+    TIMER_ALREADY_PAUSED = -4,
+    TIMER_NOT_PAUSED = -5,
 };
 
 // Provided by the platform:
@@ -52,6 +54,8 @@ enum {
 extern "C" {
 
     int StartTimer(int tenths); // Tenths of seconds
+    int PauseTimer(int timer);
+    int ResumeTimer(int timer);
     int CancelTimer(int timer);
     int GetTimerRemaining(int timer);
     int DrawRect(int x, int y, int w, int h, const Color& c);
