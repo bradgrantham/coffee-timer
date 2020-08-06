@@ -23,6 +23,7 @@ enum {
 } alarmStateStep;
 
 int waitingTimer;
+int pausedTimer;
 int runningTimer;
 int alarmTimer;
 int alarmStepTimer;
@@ -32,11 +33,13 @@ constexpr int waitingToDarkDuration = 100;
 constexpr int button1TimerDuration = 50;
 constexpr int button2TimerDuration = 100;
 constexpr int alarmToWaitingDuration = 100;
+constexpr int pausedToWaitingDuration = 100;
 #else
 constexpr int waitingToDarkDuration = 5 * 60 * 10;
 constexpr int button1TimerDuration = 1 * 60 * 10;
 constexpr int button2TimerDuration = 4 * 60 * 10;
 constexpr int alarmToWaitingDuration = 5 * 60 * 10;
+constexpr int pausedToWaitingDuration = 5 * 60 * 10;
 #endif
 
 struct Rect2Di {
@@ -72,21 +75,6 @@ void DisplayOnButton(int button, const char *str)
     }
 }
 
-void UpdateRunningState()
-{
-    DisplayTimeRemaining((GetTimerRemaining(runningTimer) + 9) / 10);
-}
-
-void EnterRunningState(int which)
-{
-    int tenths = (which == 0) ? button1TimerDuration : button2TimerDuration;
-    runningTimer = StartTimer(tenths);
-    if(debugTimers) printf("runningTimer = %d\n", runningTimer);
-    appState = STATE_RUNNING;
-    DrawRect(timeDisplayArea.left, timeDisplayArea.top, timeDisplayArea.width, timeDisplayArea.height, Color(0, 0, 0));
-    UpdateRunningState();
-}
-
 void EnterWaitingState()
 {
     if(debugStates) printf("EnterWaitingState\n");
@@ -100,6 +88,53 @@ void EnterWaitingState()
     waitingTimer = StartTimer(waitingToDarkDuration);
     if(debugTimers) printf("waitingTimer = %d\n", waitingTimer);
     appState = STATE_WAITING;
+}
+
+void UpdateRunningState()
+{
+    DisplayTimeRemaining((GetTimerRemaining(runningTimer) + 9) / 10);
+}
+
+void UpdatePausedState()
+{
+    if(GetTimerRemaining(pausedTimer) % 10 >= 5) {
+        DisplayTimeRemaining((GetTimerRemaining(runningTimer) + 9) / 10);
+    } else {
+        DisplayString("--:--");
+    }
+}
+
+void EnterPausedState()
+{
+    appState = STATE_PAUSED;
+    PauseTimer(runningTimer);
+    pausedTimer = StartTimer(pausedToWaitingDuration);
+}
+
+void ResumeRunningFromPaused()
+{
+    CancelTimer(pausedTimer);
+    pausedTimer = -1;
+    ResumeTimer(runningTimer);
+    appState = STATE_RUNNING;
+    UpdateRunningState();
+}
+
+void ExpirePausedState()
+{
+    CancelTimer(runningTimer);
+    runningTimer = -1;
+    EnterWaitingState();
+}
+
+void EnterRunningState(int which)
+{
+    int tenths = (which == 0) ? button1TimerDuration : button2TimerDuration;
+    runningTimer = StartTimer(tenths);
+    if(debugTimers) printf("runningTimer = %d\n", runningTimer);
+    appState = STATE_RUNNING;
+    DrawRect(timeDisplayArea.left, timeDisplayArea.top, timeDisplayArea.width, timeDisplayArea.height, Color(0, 0, 0));
+    UpdateRunningState();
 }
 
 const unsigned char timerBeep_bytes[] = {
@@ -471,10 +506,10 @@ int HandleEvent(const Event& e)
                     // XXX enter timer
                     break;
                 case STATE_RUNNING:
-                    abort(); // implement me
+                    EnterPausedState();
                     break;
                 case STATE_PAUSED:
-                    abort(); // implement me
+                    ResumeRunningFromPaused();
                     break;
                 case STATE_ALARM:
                     CancelClip(beepClip);
@@ -532,7 +567,7 @@ int HandleEvent(const Event& e)
                     EnterAlarmState();
                     break;
                 case STATE_PAUSED:
-                    abort(); // implement me
+                    ExpirePausedState();
                     break;
                 case STATE_ALARM:
                     if(e.data == alarmTimer) {
@@ -571,7 +606,7 @@ int HandleEvent(const Event& e)
                     UpdateRunningState();
                     break;
                 case STATE_PAUSED:
-                    abort(); // implement me
+                    UpdatePausedState();
                     break;
                 case STATE_ALARM:
                     // Nothing
