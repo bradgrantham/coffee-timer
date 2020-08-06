@@ -56,10 +56,13 @@ constexpr uint32_t oneTenthSecond = 100;
 
 struct Timer {
     bool running;
+    bool paused;
     int remaining;
     uint64_t nextTick;
+    uint64_t remainingUntilNextTickPaused;
     Timer() :
-        running(false)
+        running(false),
+        paused(false)
     { }
 };
 
@@ -84,6 +87,34 @@ int StartTimer(int tenths)
     t.remaining = tenths - 1;
 
     return timer;
+}
+
+int PauseTimer(int timer)
+{
+    if(timer < 0 || !timers[timer].running) {
+        return INVALID_TIMER_NUMBER;
+    }
+    Timer& t = timers[timer];
+    if(t.paused) {
+        return TIMER_ALREADY_PAUSED;
+    }
+    t.paused = true;
+    t.remainingUntilNextTickPaused = t.nextTick - currentTimeMillis;
+    return NO_ERROR;
+}
+
+int ResumeTimer(int timer)
+{
+    if(timer < 0 || !timers[timer].running) {
+        return INVALID_TIMER_NUMBER;
+    }
+    Timer& t = timers[timer];
+    if(!t.paused) {
+        return TIMER_NOT_PAUSED;
+    }
+    t.paused = false;
+    t.nextTick = currentTimeMillis + t.remainingUntilNextTickPaused;
+    return NO_ERROR;
 }
 
 int CancelTimer(int timer)
@@ -217,7 +248,7 @@ int ProcessEvents(uint32_t now_ticks)
 
     for(int i = 0; i < MAX_TIMERS; i++) {
         Timer& t = timers[i];
-        if(t.running) {
+        if(t.running && !t.paused) {
             if(now > t.nextTick) {
                 t.remaining --;
                 if(t.remaining > 0) {
