@@ -53,7 +53,6 @@ constexpr Rect2Di button2DisplayArea{fontWidth, 128 - fontHeight - 8, 128 - font
 
 void DisplayString(const char *str)
 {
-    DrawRect(timeDisplayArea.left, timeDisplayArea.top, timeDisplayArea.width, timeDisplayArea.height, Color(0, 0, 0));
     DrawText(timeDisplayArea.left + timeDisplayArea.width / 2, timeDisplayArea.top + timeDisplayArea.height / 2, str, JUSTIFY_CENTER, JUSTIFY_CENTER, Color(255, 255, 255), Color(0, 0, 0));
 }
 
@@ -67,10 +66,8 @@ void DisplayTimeRemaining(int seconds)
 void DisplayOnButton(int button, const char *str)
 {
     if(button == 1) {
-        DrawRect(button1DisplayArea.left, button1DisplayArea.top, button1DisplayArea.width, button1DisplayArea.height, Color(0, 0, 0));
         DrawText(button1DisplayArea.left, button1DisplayArea.top, str, JUSTIFY_LEFT, JUSTIFY_TOP, Color(255, 255, 255), Color(0, 0, 0));
     } else {
-        DrawRect(button2DisplayArea.left, button2DisplayArea.top, button2DisplayArea.width, button2DisplayArea.height, Color(0, 0, 0));
         DrawText(button2DisplayArea.left, button2DisplayArea.top, str, JUSTIFY_LEFT, JUSTIFY_TOP, Color(255, 255, 255), Color(0, 0, 0));
     }
 }
@@ -86,6 +83,7 @@ void EnterRunningState(int which)
     runningTimer = StartTimer(tenths);
     if(debugTimers) printf("runningTimer = %d\n", runningTimer);
     appState = STATE_RUNNING;
+    DrawRect(timeDisplayArea.left, timeDisplayArea.top, timeDisplayArea.width, timeDisplayArea.height, Color(0, 0, 0));
     UpdateRunningState();
 }
 
@@ -93,6 +91,9 @@ void EnterWaitingState()
 {
     if(debugStates) printf("EnterWaitingState\n");
     SetScreen(true);
+    DrawRect(timeDisplayArea.left, timeDisplayArea.top, timeDisplayArea.width, timeDisplayArea.height, Color(0, 0, 0));
+    DrawRect(button1DisplayArea.left, button1DisplayArea.top, button1DisplayArea.width, button1DisplayArea.height, Color(0, 0, 0));
+    DrawRect(button2DisplayArea.left, button2DisplayArea.top, button2DisplayArea.width, button2DisplayArea.height, Color(0, 0, 0));
     DisplayOnButton(1, "1m");
     DisplayOnButton(2, "4m");
     DisplayString("Press Button\nTo Left\n");
@@ -446,6 +447,7 @@ int HandleEvent(const Event& e)
 {
     switch(e.type) {
         case INIT: {
+            DrawRect(0, 0, 128, 128, Color(0, 0, 0));
             EnterWaitingState();
             break;
         }

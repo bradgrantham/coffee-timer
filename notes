@@ -1,8 +1,6 @@
 To do
     move to port of Adafruit library instead
-    clear screen to black on start
     rotate 270 degrees
-    Find a way to not flash - update pixels once
     better amplification
     connect Lite and allow turning off backlight and turning off TFT
 
