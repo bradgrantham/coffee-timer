@@ -3,12 +3,41 @@ To do
     better amplification on sound
     connect Lite and allow turning off backlight and turning off TFT
     implement entering low-power mode
+    make sure all transitions and events are valid or noted to do nothing
+        short 1, short 2, short 1+2, long 1, long 2, long 1+2
 
 If the handle event callback is exited and no timers and no clips
-  are running, enter low-power mode (kill screen?)
+  are running, enter low-power mode and kill screen
 interrupt on button push -> wake from sleep so main() can run
 
-verify button can wake board
+Waiting
+    short 1 or 2 -> start timer
+    short 1+2 -> status
+    long 1 -> edit starting with timer 1
+    long 2 -> edit starting with timer 2
+    long 1+2 -> sleep
+Edit
+    short 1 -> add
+    short 2 -> subtract
+    short 1+2 -> cancel -> waiting
+    long 1 or 2 -> start
+    long 1+2 -> cancel -> sleep
+Status
+    any -> Waiting
+Running
+    short 1 or 2 -> go to Paused
+    long 1 or 2 -> cancel, go to Waiting
+    short 1+2
+    long 1+2 -> sleep
+Paused
+    short 1 or 2 or 1+2 -> resume Running
+    long 1 or 2 -> cancel, go to Waiting
+    long 1+2 -> sleep
+Alarm
+    short 1 or 2 -> return to Waiting
+    short 1+2 -> return to Waiting
+    long 1 or 2 -> start timer 1 or 2
+    long 1+2 -> sleep
 
 serial /dev/tty.usbmodem14103 115200 # in other window
 
