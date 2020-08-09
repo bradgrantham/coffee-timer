@@ -168,6 +168,7 @@ static void error_callback(int error, const char* description)
 }
 
 Timepoint keyPressedTime[2];
+bool buttonPressed[2];
 
 constexpr float LONG_PRESS_DURATION_MICROS = 500000;
 
@@ -176,19 +177,33 @@ static void key(GLFWwindow *window, int key, int scancode, int action, int mods)
     if(action == GLFW_PRESS) {
         if(key == GLFW_KEY_1) {
             keyPressedTime[0] = std::chrono::steady_clock::now();
+            buttonPressed[0] = true;
         } else if(key == GLFW_KEY_2) {
             keyPressedTime[1] = std::chrono::steady_clock::now();
+            buttonPressed[1] = true;
         } else {
         }
     } else if(action == GLFW_RELEASE) {
-        if(key == GLFW_KEY_1) {
+        if(key == GLFW_KEY_1 && buttonPressed[0]) {
             auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - keyPressedTime[0]);
             bool pressWasLong = (elapsed.count() >= LONG_PRESS_DURATION_MICROS);
-            EventQueue.push_back({pressWasLong ? LONG_PRESS : SHORT_PRESS, BUTTON_1});
-        } else if(key == GLFW_KEY_2) {
+            if(buttonPressed[1]) { 
+                EventQueue.push_back({pressWasLong ? LONG_PRESS : SHORT_PRESS, BUTTON_1 | BUTTON_2});
+                buttonPressed[1] = false;
+            } else {
+                EventQueue.push_back({pressWasLong ? LONG_PRESS : SHORT_PRESS, BUTTON_1});
+            }
+            buttonPressed[0] = false;
+        } else if(key == GLFW_KEY_2 && buttonPressed[1]) {
             auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - keyPressedTime[1]);
             bool pressWasLong = (elapsed.count() >= LONG_PRESS_DURATION_MICROS);
-            EventQueue.push_back({pressWasLong ? LONG_PRESS : SHORT_PRESS, BUTTON_2});
+            if(buttonPressed[0]) { 
+                EventQueue.push_back({pressWasLong ? LONG_PRESS : SHORT_PRESS, BUTTON_1 | BUTTON_2});
+                buttonPressed[0] = false;
+            } else {
+                EventQueue.push_back({pressWasLong ? LONG_PRESS : SHORT_PRESS, BUTTON_2});
+            }
+            buttonPressed[1] = false;
         } else {
         }
     }
