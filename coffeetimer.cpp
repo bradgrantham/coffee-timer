@@ -21,7 +21,7 @@ enum {
 
 // time spent in each state
 
-#if 1
+#if 0
 // Testing
 constexpr int waitingToDarkDuration = 100;
 constexpr int button1TimerDuration = 50;
@@ -29,6 +29,7 @@ constexpr int button2TimerDuration = 100;
 constexpr int alarmToWaitingDuration = 100;
 constexpr int pausedToWaitingDuration = 100;
 constexpr int statusToWaitingDuration = 100;
+constexpr int editToWaitingDuration = 100;
 #else
 // Production
 constexpr int waitingToDarkDuration = 5 * 60 * 10;
@@ -37,6 +38,7 @@ constexpr int button2TimerDuration = 4 * 60 * 10;
 constexpr int alarmToWaitingDuration = 5 * 60 * 10;
 constexpr int pausedToWaitingDuration = 5 * 60 * 10;
 constexpr int statusToWaitingDuration = 1 * 60 * 10;
+constexpr int editToWaitingDuration = 1 * 60 * 10;
 #endif
 
 struct Rect2Di {
@@ -111,21 +113,45 @@ void UpdateWaitingState()
     // show current time, show an animation, something
 }
 
+void ExitWaitingState()
+{
+    CancelTimer(waitingTimer); waitingTimer = -1;
+}
 
 // ----------------------------------------------------------------------------
 // Edit and start a custom timer
 
 int editWaitTimer;
+int customTimerDuration;
 
 void EnterEditState(int which)
 {
     if(debugStates) printf("EnterEditState\n");
+    customTimerDuration = (which == 0) ? button1TimerDuration : button2TimerDuration;
+    DrawRect(timeDisplayArea.left, timeDisplayArea.top, timeDisplayArea.width, timeDisplayArea.height, Color(0, 0, 0));
+    DrawRect(button1DisplayArea.left, button1DisplayArea.top, button1DisplayArea.width, button1DisplayArea.height, Color(0, 0, 0));
+    DrawRect(button2DisplayArea.left, button2DisplayArea.top, button2DisplayArea.width, button2DisplayArea.height, Color(0, 0, 0));
+    DisplayOnButton(1, "+5s");
+    DisplayOnButton(2, "-5s");
+    DisplayTimeRemaining(customTimerDuration);
+    editWaitTimer = StartTimer(editToWaitingDuration);
+    if(debugTimers) printf("editWaitTimer = %d\n", editWaitTimer);
+    appState = STATE_EDIT;
 }
 
 void UpdateEditState()
 {
+    // if(GetTimerRemaining(editWaitTimer) % 10 >= 5) {
+        DisplayTimeRemaining(customTimerDuration / 10);
+    // } else {
+        // DisplayString("--:--");
+    // }
 }
 
+void ExitEditState()
+{
+    CancelTimer(editWaitTimer); editWaitTimer = -1;
+}
 
 // ----------------------------------------------------------------------------
 // Status state, voltage, ...?
@@ -165,14 +191,17 @@ void CancelStatusState()
 
 int runningTimer;
 
-void EnterRunningState(int which)
+void EnterRunningState(int tenths)
 {
     if(debugStates) printf("EnterRunningState\n");
-    int tenths = (which == 0) ? button1TimerDuration : button2TimerDuration;
     runningTimer = StartTimer(tenths);
     if(debugTimers) printf("runningTimer = %d\n", runningTimer);
     appState = STATE_RUNNING;
     DrawRect(timeDisplayArea.left, timeDisplayArea.top, timeDisplayArea.width, timeDisplayArea.height, Color(0, 0, 0));
+    DrawRect(button1DisplayArea.left, button1DisplayArea.top, button1DisplayArea.width, button1DisplayArea.height, Color(0, 0, 0));
+    DrawRect(button2DisplayArea.left, button2DisplayArea.top, button2DisplayArea.width, button2DisplayArea.height, Color(0, 0, 0));
+    DisplayOnButton(1, "Pause");
+    DisplayOnButton(2, "Pause");
 }
 
 void UpdateRunningState()
@@ -607,10 +636,10 @@ void WaitingStateEvent(const Event &e)
         case SHORT_PRESS: {
             CancelTimer(waitingTimer); waitingTimer = -1;
             if(e.data == BUTTON_1) {
-                EnterRunningState(0);
+                EnterRunningState(button1TimerDuration);
                 UpdateRunningState();
             } else if(e.data == BUTTON_2) {
-                EnterRunningState(1);
+                EnterRunningState(button2TimerDuration);
                 UpdateRunningState();
             } else if(e.data == (BUTTON_1 | BUTTON_2)) {
                 EnterStatusState();
@@ -619,13 +648,15 @@ void WaitingStateEvent(const Event &e)
         }
         case LONG_PRESS: {
             if(e.data == BUTTON_1) {
+                ExitWaitingState();
                 EnterEditState(0);
                 UpdateEditState();
             } else if(e.data == BUTTON_2) {
+                ExitWaitingState();
                 EnterEditState(1);
                 UpdateEditState();
             } else if(e.data == (BUTTON_1 | BUTTON_2)) {
-                CancelTimer(waitingTimer); waitingTimer = -1;
+                ExitWaitingState();
                 EnterDarkState();
             }
             break;
@@ -676,12 +707,40 @@ void EditStateEvent(const Event &e)
     switch(e.type) {
         case INIT: /* not reached */ break;
         case SHORT_PRESS: {
+            if(e.data == BUTTON_1) {
+                if(customTimerDuration > 50) {
+                    customTimerDuration -= 50;
+                    // XXX Could have a ResetTimer() function
+                    CancelTimer(editWaitTimer); editWaitTimer = -1;
+                    editWaitTimer = StartTimer(editToWaitingDuration);
+                    DrawRect(timeDisplayArea.left, timeDisplayArea.top, timeDisplayArea.width, timeDisplayArea.height, Color(0, 0, 0));
+                    UpdateEditState();
+                }
+            } else if(e.data == BUTTON_2) {
+                customTimerDuration += 50;
+                CancelTimer(editWaitTimer); editWaitTimer = -1;
+                editWaitTimer = StartTimer(editToWaitingDuration);
+                DrawRect(timeDisplayArea.left, timeDisplayArea.top, timeDisplayArea.width, timeDisplayArea.height, Color(0, 0, 0));
+                UpdateEditState();
+            } else {
+                ExitEditState();
+                EnterWaitingState();
+            }
             break;
         }
         case LONG_PRESS: {
+            if((e.data == BUTTON_1) || (e.data == BUTTON_2)) {
+                ExitEditState();
+                EnterRunningState(customTimerDuration);
+            } else {
+                ExitEditState();
+                EnterDarkState();
+            }
             break;
         }
         case TIMER_FINISHED: {
+            ExitEditState();
+            EnterWaitingState();
             break;
         }
         case TIMER_TICK: {
@@ -773,7 +832,7 @@ void AlarmStateEvent(const Event &e)
         case LONG_PRESS: {
             if((e.data == BUTTON_1) || (e.data == BUTTON_2)) {
                 ExitAlarmState();
-                EnterRunningState((e.data == BUTTON_1) ? 1 : 2);
+                EnterRunningState((e.data == BUTTON_1) ? button1TimerDuration : button2TimerDuration);
             } else {
                 ExitAlarmState();
                 EnterDarkState();
