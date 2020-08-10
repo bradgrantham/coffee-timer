@@ -477,6 +477,7 @@ int CancelClip(int tune)
         return INVALID_CLIP_NUMBER;
     }
     assert(tune == 0);
+    clipPlaying = false;
     return NO_ERROR;
 }
 
@@ -596,6 +597,24 @@ int DrawBitmap(int left, int top, int w, int h, const uint8_t *bits, size_t rowB
     return NO_ERROR;
 }
 
+int BatteryMillivolts()
+{
+    return 6666;
+}
+
+struct BatteryEnvFakeLow
+{
+    bool low;
+    BatteryEnvFakeLow() 
+        : low(getenv("FAKE_LOW_BATTERY"))
+    {}
+} gBatteryEnvFakeLow;
+
+int BatteryLow()
+{
+    return gBatteryEnvFakeLow.low;
+}
+
 int main(int argc, char **argv)
 {
     initialize_ui("coffee timer simulator");
@@ -645,5 +664,4 @@ int main(int argc, char **argv)
         }
 
     } while (!quitMyApp);
-
 }

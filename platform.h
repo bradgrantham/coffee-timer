@@ -63,6 +63,8 @@ extern "C" {
     int SetScreen(bool power);
     int PlayClip(const uint8_t *samples8KMono, size_t size);
     int CancelClip(int clip);
+    int BatteryMillivolts();
+    int BatteryLow();
 
 };
 
