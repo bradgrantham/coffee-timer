@@ -1,4 +1,5 @@
 To do
+    CancelTimer and CancelClip should take int* and set to -1 for you.
     move to port of Adafruit library instead
     better amplification on sound
     connect Lite and allow turning off backlight and turning off TFT
@@ -10,7 +11,7 @@ If the handle event callback is exited and no timers and no clips
   are running, enter low-power mode and kill screen
 interrupt on button push -> wake from sleep so main() can run
 
-Waiting
+./ Waiting
     short 1 or 2 -> start timer
     short 1+2 -> status
     long 1 -> edit starting with timer 1
@@ -22,18 +23,18 @@ Edit
     short 1+2 -> cancel -> waiting
     long 1 or 2 -> start
     long 1+2 -> cancel -> sleep
-Status
+./ Status
     any -> Waiting
-Running
+./ Running
     short 1 or 2 -> go to Paused
     long 1 or 2 -> cancel, go to Waiting
-    short 1+2
+    short 1+2 -> go to Paused
     long 1+2 -> sleep
-Paused
+./ Paused
     short 1 or 2 or 1+2 -> resume Running
     long 1 or 2 -> cancel, go to Waiting
     long 1+2 -> sleep
-Alarm
+./ Alarm
     short 1 or 2 -> return to Waiting
     short 1+2 -> return to Waiting
     long 1 or 2 -> start timer 1 or 2
